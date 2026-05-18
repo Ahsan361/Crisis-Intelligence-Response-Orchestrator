@@ -1,0 +1,59 @@
+name: ciro_mobile_client
+description: CIRO — Crisis Intelligence & Response Orchestrator. Real-time urban crisis detection and response for Pakistan's metropolitan areas.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Typography
+  google_fonts: ^8.1.0
+
+  # State Management
+  flutter_riverpod: ^3.3.1
+
+  # Navigation
+  go_router: ^17.2.3
+
+  # Animations
+  flutter_animate: ^4.5.2
+
+  # Networking
+  dio: ^5.9.2
+
+  # Maps
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+
+  # Image Caching (for future API-fetched media)
+  cached_network_image: ^3.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Background and branding
+    - assets/images/splash_bg.png
+    - assets/images/ciro_shield.png
+
+    # Crisis type icons
+    - assets/icons/flood.png
+    - assets/icons/accident.png
+    - assets/icons/heatwave.png
+    - assets/icons/blockage.png
+    - assets/icons/infrastructure.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/ciro_logo.png"
