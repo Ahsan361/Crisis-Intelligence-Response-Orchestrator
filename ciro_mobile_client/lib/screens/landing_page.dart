@@ -264,40 +264,115 @@ class _ReportButtonCardState extends State<_ReportButtonCard> {
 class _ReportButtonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = CiroColors.of(context);
+    
+    // Coral red color from user screenshot
+    const coralRed = Color(0xFFFF4D5A);
+    final ring1Color = coralRed.withValues(alpha: isDark ? 0.12 : 0.15);
+    final ring2Color = coralRed.withValues(alpha: isDark ? 0.05 : 0.07);
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
       decoration: BoxDecoration(
-        gradient: CiroColors.reportButtonGradient,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: CiroColors.reportButtonGlow,
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.divider.withValues(alpha: isDark ? 0.15 : 0.5),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.warning_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
+          // ── Concentric Pulsing Emergency Beacon ─────────────────────
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer Ripple Ring 2 (Largest)
+              Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  color: ring2Color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              // Outer Ripple Ring 1 (Middle)
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: ring1Color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              // Main Circular Button (Center)
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: coralRed,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: coralRed.withValues(alpha: isDark ? 0.5 : 0.35),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.campaign_rounded, // Premium emergency beacon megaphone icon
+                  color: Colors.white,
+                  size: 52,
+                ),
+              ),
+            ],
+          )
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .scale(
+            begin: const Offset(0.97, 0.97),
+            end: const Offset(1.03, 1.03),
+            duration: 1500.ms,
+            curve: Curves.easeInOut,
           ),
-          const SizedBox(height: 16),
+          
+          const SizedBox(height: 24),
+          
+          // ── Text Labels ────────────────────────────────────────────
           Text(
-            'Report a Crisis',
-            style: CiroTextStyles.reportButtonLabel,
+            'Tap in case of emergency',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFF0F6FC) : const Color(0xFF1F2328),
+              letterSpacing: -0.2,
+            ),
             textAlign: TextAlign.center,
           ),
+          
           const SizedBox(height: 6),
+          
           Text(
             'Tap to submit an emergency report',
-            style: CiroTextStyles.reportButtonSubtitle,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: colors.onSurface.withValues(alpha: 0.8),
+            ),
             textAlign: TextAlign.center,
           ),
         ],

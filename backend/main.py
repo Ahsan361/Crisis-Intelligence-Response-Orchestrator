@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -188,6 +189,62 @@ async def auto_resolve_reports():
         except Exception as e:
             print(f"Auto-resolve error: {e}")
 
+import subprocess
+import sys
+
+# Seeder State Management for Dashboard Simulator (triggers standalone seeder.py)
+class SeederState:
+    def __init__(self):
+        self.running: bool = False
+        self.interval_minutes: int = 4
+        self.process: Optional[subprocess.Popen] = None
+        self.task: Optional[asyncio.Task] = None
+        self.total_seeded: int = 0
+        self.last_updated: str = datetime.now(timezone.utc).isoformat()
+        self.logs: list = []
+
+seeder_state = SeederState()
+
+async def read_seeder_stdout():
+    """Reads stdout of the seeder.py subprocess and logs it in real-time."""
+    proc = seeder_state.process
+    if not proc:
+        return
+        
+    loop = asyncio.get_running_loop()
+    
+    try:
+        while proc.poll() is None and seeder_state.running:
+            # Read stdout line non-blockingly using loop executor
+            line = await loop.run_in_executor(None, proc.stdout.readline)
+            if not line:
+                await asyncio.sleep(0.2)
+                continue
+                
+            stripped = line.strip()
+            if not stripped:
+                continue
+                
+            print(f"[seeder.py] {stripped}")
+            
+            # Detect successful insert from seeder.py output
+            if "SUCCESS" in stripped:
+                seeder_state.total_seeded += 1
+                seeder_state.last_updated = datetime.now(timezone.utc).isoformat()
+                
+            # Log the message
+            seeder_state.logs.insert(0, {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "message": stripped
+            })
+            if len(seeder_state.logs) > 50:
+                seeder_state.logs = seeder_state.logs[:50]
+                
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"Error reading seeder subprocess stdout: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task1 = asyncio.create_task(auto_resolve_reports())
@@ -197,11 +254,33 @@ async def lifespan(app: FastAPI):
     task1.cancel()
     task2.cancel()
     task3.cancel()
+    if seeder_state.running or seeder_state.process:
+        seeder_state.running = False
+        if seeder_state.task:
+            seeder_state.task.cancel()
+        if seeder_state.process:
+            try:
+                seeder_state.process.terminate()
+                seeder_state.process.wait(timeout=2)
+            except Exception:
+                try:
+                    seeder_state.process.kill()
+                except Exception:
+                    pass
 
 app = FastAPI(
     title="CIRO API", 
     description="Crisis Intelligence & Response Orchestrator Backend",
     lifespan=lifespan
+)
+
+# Configure CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class AnalyzeRequest(BaseModel):
@@ -313,6 +392,152 @@ async def analyze_report(req: AnalyzeRequest):
         
     # 4. Return the full state dict
     return state
+
+# Seeder REST API Endpoints
+class SeederStartRequest(BaseModel):
+    interval_minutes: int
+
+@app.get("/seeder/status")
+async def get_seeder_status():
+    return {
+        "running": seeder_state.running,
+        "status": "running" if seeder_state.running else "stopped",
+        "total_seeded": seeder_state.total_seeded,
+        "last_updated": seeder_state.last_updated,
+        "logs": seeder_state.logs
+    }
+
+@app.post("/seeder/start")
+async def start_seeder_endpoint(req: SeederStartRequest):
+    if seeder_state.running or seeder_state.process is not None:
+        return {"message": "Seeder is already running", "status": "running"}
+        
+    import subprocess
+    import sys
+    
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    seeder_path = os.path.join(backend_dir, "seeder.py")
+    
+    try:
+        seeder_state.process = subprocess.Popen(
+            [sys.executable, seeder_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+            cwd=backend_dir
+        )
+        seeder_state.running = True
+        seeder_state.interval_minutes = req.interval_minutes
+        seeder_state.task = asyncio.create_task(read_seeder_stdout())
+        
+        log_msg = f"Seeder process (seeder.py) spawned successfully (PID: {seeder_state.process.pid})"
+        print(log_msg)
+        seeder_state.logs.insert(0, {
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "message": log_msg
+        })
+        
+        return {
+            "message": "Seeder process started successfully",
+            "running": seeder_state.running,
+            "status": "running"
+        }
+    except Exception as e:
+        seeder_state.running = False
+        seeder_state.process = None
+        raise HTTPException(status_code=500, detail=f"Failed to start seeder process: {e}")
+
+@app.post("/seeder/stop")
+async def stop_seeder_endpoint():
+    if not seeder_state.running or seeder_state.process is None:
+        return {"message": "Seeder is not running", "status": "stopped"}
+        
+    seeder_state.running = False
+    
+    if seeder_state.task:
+        seeder_state.task.cancel()
+        seeder_state.task = None
+        
+    proc = seeder_state.process
+    try:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+    except Exception as e:
+        print(f"Error terminating seeder process: {e}")
+    finally:
+        seeder_state.process = None
+        
+    log_msg = "Seeder process (seeder.py) stopped manually"
+    print(log_msg)
+    seeder_state.logs.insert(0, {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "message": log_msg
+    })
+    
+    return {
+        "message": "Seeder stopped successfully",
+        "running": seeder_state.running,
+        "status": "stopped"
+    }
+
+@app.post("/seeder/seed-now")
+async def seed_now_endpoint():
+    from data.seed_reports import REPORTS_POOL
+    import random
+    
+    try:
+        report_data = random.choice(REPORTS_POOL)
+        db_report = {
+            "report_text": report_data["report_text"],
+            "source": "social_media",
+            "reported_by": report_data["reported_by"],
+            "area_name": report_data["area_name"],
+            "location_lat": report_data["location_lat"],
+            "location_lng": report_data["location_lng"],
+            "status": "pending"
+        }
+        
+        response = supabase.table("reports").insert(db_report).execute()
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to insert report via Supabase")
+            
+        inserted_report = response.data[0]
+        seeder_state.total_seeded += 1
+        seeder_state.last_updated = datetime.now(timezone.utc).isoformat()
+        
+        log_msg = f"SUCCESS (Manual): Seeded report in {db_report['area_name']} (ID: {inserted_report['id']})"
+        print(log_msg)
+        
+        seeder_state.logs.insert(0, {
+            "id": inserted_report['id'],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "message": log_msg
+        })
+        if len(seeder_state.logs) > 50:
+            seeder_state.logs = seeder_state.logs[:50]
+            
+        return {
+            "message": "Report seeded successfully",
+            "report": inserted_report
+        }
+    except Exception as e:
+        err_msg = f"Manual Seed Error: {e}"
+        print(err_msg)
+        seeder_state.logs.insert(0, {
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "message": err_msg
+        })
+        if len(seeder_state.logs) > 50:
+            seeder_state.logs = seeder_state.logs[:50]
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
