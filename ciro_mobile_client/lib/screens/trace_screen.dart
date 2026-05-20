@@ -613,8 +613,22 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final priority = action['priority']?.toString().toLowerCase() ?? 'medium';
+    // Accept multiple possible key names from different backends (snake_case or camelCase)
+    final rawPriority = action['priority'] ?? action['priority_level'] ?? action['priorityLevel'] ?? action['severity'];
+    final priority = rawPriority?.toString().toLowerCase() ?? 'medium';
     final priorityColor = CiroColors.forSeverity(priority);
+
+    // Flexible lookups for text fields — handle different shapes safely
+    final rawActionType = action['action_type'] ?? action['actionType'] ?? action['type'];
+    final actionType = rawActionType?.toString().toUpperCase() ?? 'ACTION';
+
+    final rawDescription = action['description'] ?? action['desc'] ?? action['body'] ?? action['text'] ?? action['details'];
+    final description = rawDescription == null
+        ? 'No description provided.'
+        : (rawDescription is String ? rawDescription : rawDescription.toString());
+
+    final rawAssigned = action['assigned_to'] ?? action['assignedTo'] ?? action['assigned'] ?? action['assignee'];
+    final assignedTo = rawAssigned?.toString() ?? 'Unknown';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -649,7 +663,7 @@ class _ActionCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          action['action_type']?.toString().toUpperCase() ?? 'ACTION',
+                          actionType,
                           style: ts.caption.copyWith(
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.0,
@@ -678,17 +692,19 @@ class _ActionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      action['description'] ?? '',
+                      description,
                       style: ts.bodySmall.copyWith(
                         color: colors.onBackground,
                         height: 1.4,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Assigned to: ${action['assigned_to'] ?? 'Unknown'}',
+                      'Assigned to: $assignedTo',
                       style: ts.caption.copyWith(
-                        color: colors.onSurface.withAlpha(100),
+                        color: colors.onSurface.withAlpha(180),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

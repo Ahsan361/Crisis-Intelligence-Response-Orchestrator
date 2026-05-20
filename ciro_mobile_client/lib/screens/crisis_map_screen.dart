@@ -435,7 +435,11 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
                                 'crisis_confidence': widget.alert.crisisConfidence,
                                 'detected_language': widget.alert.detectedLanguage,
                                 'normalized_location': widget.alert.areaName,
-                                'action_plan': widget.alert.agentTrace ?? [],
+                                // Do NOT reuse `agentTrace` for `action_plan` — agentTrace
+                                // contains timeline entries (decisions), not action objects.
+                                // Prefer any structured `action_plan` from the alert, or
+                                // fall back to empty list to avoid mis-mapped UI.
+                                'action_plan': widget.alert.simulationResult?['action_plan'] ?? [],
                                 'simulation_result':
                                     widget.alert.simulationResult ?? {},
                                 'trace': widget.alert.agentTrace ?? [],

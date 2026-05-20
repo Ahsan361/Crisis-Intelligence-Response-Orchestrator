@@ -80,11 +80,8 @@ async def weather_monitor():
         await asyncio.sleep(1800)  # every 30 minutes
 
 async def traffic_monitor():
-    # tomtom_api_key = os.environ.get("TOMTOM_API_KEY")
-    # if not tomtom_api_key or tomtom_api_key == "your_key_here":
-    #     print("TOMTOM_API_KEY is not configured properly. Traffic monitor will not run.")
-    #     return
-    # Initially I was planning to use TomTom API to check traffic but it doesnt have coverage for Islamabad, so I am using a simulation approach based on rush hours.
+   
+    # Initially we planned to use TomTom API to check traffic but it doesnt have coverage for Islamabad, so I am using a simulation approach based on rush hours.
         
     RUSH_HOURS = [
         (6, 9),   # morning rush

@@ -1,10 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
-/// Central configuration for the CIRO application.
-///
-/// Handles environment-specific variables like API base URLs
-/// and global timeout settings.
+
 abstract final class AppConfig {
   AppConfig._();
 
@@ -47,7 +44,7 @@ abstract final class AppConfig {
   static const bool forceMockData = false;
 
   // ── OpenRouteService Settings ───────────────────────────────────────────
-  static const String orsApiKey = 'YOUR_ORS_API_KEY';
+  static const String orsApiKey = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImFlZThlMWNjMGNiNjQ2ZDA4ZGYwYzAzNDU5ZmNmMzAyIiwiaCI6Im11cm11cjY0In0=';
 
   static const String orsBaseUrl = 'https://api.openrouteservice.org';
 }
