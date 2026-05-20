@@ -7,13 +7,6 @@ load_dotenv()
 
 
 def setup_google_credentials():
-    """
-    For Render deployment:
-    Reads service account JSON from env variable and writes it to a temp file.
-    For local development:
-    If GOOGLE_APPLICATION_CREDENTIALS already exists, it uses that.
-    """
-
     creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 
     if creds_json:
@@ -23,15 +16,24 @@ def setup_google_credentials():
             json.dump(json.loads(creds_json), f)
 
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+        print("Google credentials loaded from GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    else:
+        print("GOOGLE_APPLICATION_CREDENTIALS_JSON not found")
 
 
 class ClientManager:
     def __init__(self):
+        setup_google_credentials()
+
         self.project = os.getenv("GOOGLE_CLOUD_PROJECT")
         self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
+        print("Google Cloud Project:", self.project)
+        print("Google Cloud Location:", self.location)
+        print("GOOGLE_APPLICATION_CREDENTIALS:", os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+
         if not self.project:
-            raise ValueError("GOOGLE_CLOUD_PROJECT is missing in .env")
+            raise ValueError("GOOGLE_CLOUD_PROJECT is missing")
 
         self.client = genai.Client(
             vertexai=True,
