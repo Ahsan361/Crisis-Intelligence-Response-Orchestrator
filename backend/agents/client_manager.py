@@ -1,8 +1,28 @@
 import os
+import json
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
+
+
+def setup_google_credentials():
+    """
+    For Render deployment:
+    Reads service account JSON from env variable and writes it to a temp file.
+    For local development:
+    If GOOGLE_APPLICATION_CREDENTIALS already exists, it uses that.
+    """
+
+    creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+    if creds_json:
+        creds_path = "/tmp/google-credentials.json"
+
+        with open(creds_path, "w") as f:
+            json.dump(json.loads(creds_json), f)
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
 
 class ClientManager:
