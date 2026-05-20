@@ -1,8 +1,9 @@
-import { BarChart3, DatabaseZap, GitBranch, LayoutDashboard, Moon, Shield, Sun, TableProperties } from "lucide-react"
+import { BarChart3, DatabaseZap, GitBranch, LayoutDashboard, Moon, Shield, Sun, TableProperties, LogOut } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useBackendStatus } from "@/hooks/useBackendStatus"
 import { useTheme } from "@/lib/theme"
+import { useAuth } from "@/lib/authContext"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
 
 export function Sidebar() {
   const { theme, toggleTheme } = useTheme()
+  const { logout } = useAuth()
   const backend = useBackendStatus()
   const live = backend.data === true
 
@@ -56,10 +58,22 @@ export function Sidebar() {
           </div>
           <span className="text-xs text-muted">Backend</span>
         </div>
-        <Button variant="outline" className="w-full" onClick={toggleTheme}>
-          {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          {theme === "dark" ? "Dark Theme" : "Light Theme"}
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={toggleTheme}>
+            {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            {theme === "dark" ? "Dark" : "Light"}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="flex-1 border-critical/30 text-critical hover:bg-critical/10" 
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
     </aside>
   )

@@ -13,23 +13,9 @@ abstract final class AppConfig {
   /// - iOS Simulator: localhost
   /// - Physical Device: Your PC IPv4 address
   static String get apiBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    }
-
-    if (Platform.isAndroid) {
-    // Physical Android with adb reverse
-    return 'http://127.0.0.1:8000';
-  }
-
-    if (Platform.isIOS) {
-      // iOS Simulator
-      return 'http://localhost:8000';
-    }
-
-    // Physical device over WiFi/USB
-    return 'http://192.168.1.8:8000';
-  }
+  // Production deployed backend
+  return 'https://crisis-intelligence-response-orchestrator.onrender.com/';
+}
 
   // ── Endpoints ───────────────────────────────────────────────────────────
   static const String reports = '/reports';
