@@ -21,9 +21,9 @@ abstract final class AppConfig {
     }
 
     if (Platform.isAndroid) {
-      // Android Emulator
-      return 'http://10.0.2.2:8000';
-    }
+    // Physical Android with adb reverse
+    return 'http://127.0.0.1:8000';
+  }
 
     if (Platform.isIOS) {
       // iOS Simulator
@@ -31,7 +31,7 @@ abstract final class AppConfig {
     }
 
     // Physical device over WiFi/USB
-    return 'http://192.168.1.2:8000';
+    return 'http://192.168.1.8:8000';
   }
 
   // ── Endpoints ───────────────────────────────────────────────────────────

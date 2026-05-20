@@ -4,7 +4,7 @@ import datetime
 from typing import Dict, Any
 from dotenv import load_dotenv
 from google.genai import types
-from agents.client_manager import get_client, rotate_client
+from agents.client_manager import get_client
 
 # Load environment variables
 load_dotenv()
@@ -135,17 +135,8 @@ def simulator(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         result = call_gemini()
     except Exception as e:
-        if "429" in str(e):
-            print("Rate limit hit. Rotating API key...")
-            rotate_client()
-            try:
-                result = call_gemini()
-            except Exception as e2:
-                print(f"Retry also failed: {e2}")
-                result = fallback_output
-        else:
-            print(f"Error in Simulator Gemini call: {e}")
-            result = fallback_output
+        print(f"Simulator Vertex AI call error: {e}")
+        result = fallback_output
 
     # Update the shared state
     state["simulation_result"] = result.get("simulation_result", fallback_output["simulation_result"])
@@ -160,28 +151,7 @@ def simulator(state: Dict[str, Any]) -> Dict[str, Any]:
         "output_summary": f"Simulated ticket {state['simulation_result']['emergency_ticket']['ticket_id']}. ETA reduced by {state['simulation_result']['before_route']['eta_minutes'] - state['simulation_result']['after_route']['eta_minutes']} mins."
     }
     
-    if "trace" not in state:
-        state["trace"] = []
+    state.setdefault("trace", [])
     state["trace"].append(trace_entry)
 
     return state
-
-if __name__ == "__main__":
-    # Test script for Simulator
-    test_state = {
-        "report_id": "test-uuid",
-        "normalized_location": "G-10 Markaz (33.6938, 73.0146)",
-        "raw_input": {
-            "location_lat": 33.6938,
-            "location_lng": 73.0146
-        },
-        "crisis_type": "flood",
-        "severity": "critical",
-        "action_plan": [
-            {"action_type": "dispatch", "description": "Send boats", "priority": "critical", "assigned_to": "Rescue 1122"}
-        ],
-        "trace": []
-    }
-    
-    updated_state = simulator(test_state)
-    print(json.dumps(updated_state, indent=2))

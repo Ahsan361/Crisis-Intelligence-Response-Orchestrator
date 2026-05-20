@@ -4,7 +4,7 @@ import datetime
 from typing import Dict, Any
 from dotenv import load_dotenv
 from google.genai import types
-from agents.client_manager import get_client, rotate_client
+from agents.client_manager import get_client
 
 # Load environment variables
 load_dotenv()
@@ -63,17 +63,8 @@ def reasoning_analyzer(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         result = call_gemini()
     except Exception as e:
-        if "429" in str(e):
-            print("Rate limit hit. Rotating API key...")
-            rotate_client()
-            try:
-                result = call_gemini()
-            except Exception as e2:
-                print(f"Retry also failed: {e2}")
-                result = fallback_output
-        else:
-            print(f"Error in ReasoningAnalyzer Gemini call: {e}")
-            result = fallback_output
+        print(f"Error in ReasoningAnalyzer Vertex AI call: {e}")
+        result = fallback_output
 
     # Update the shared state
     state["severity"] = result.get("severity", "medium")
@@ -90,20 +81,7 @@ def reasoning_analyzer(state: Dict[str, Any]) -> Dict[str, Any]:
         "output_summary": f"Severity: {state['severity']}. Sources: {state['confirming_sources']}"
     }
     
-    if "trace" not in state:
-        state["trace"] = []
+    state.setdefault("trace", [])
     state["trace"].append(trace_entry)
 
     return state
-
-if __name__ == "__main__":
-    # Test script for ReasoningAnalyzer
-    test_state = {
-        "report_id": "test-uuid",
-        "cleaned_text": "Massive flooding in G-10. Multiple houses submerged. People are stranded on roofs.",
-        "crisis_type": "flood",
-        "trace": []
-    }
-    
-    updated_state = reasoning_analyzer(test_state)
-    print(json.dumps(updated_state, indent=2))
