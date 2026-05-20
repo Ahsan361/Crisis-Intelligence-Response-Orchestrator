@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
 import '../models/crisis_alert.dart';
 import '../providers/app_providers.dart';
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_theme.dart';
 import '../widgets/severity_badge.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TRACE HISTORY SCREEN
+// TRACE HISTORY SCREEN — Analysis history with premium cards
 // ═══════════════════════════════════════════════════════════════════════════
 
 class TraceHistoryScreen extends ConsumerWidget {
@@ -29,14 +31,24 @@ class TraceHistoryScreen extends ConsumerWidget {
           SliverAppBar(
             floating: true,
             backgroundColor: colors.background,
-            title: Text('Analysis History', style: ts.title),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Analysis History', style: ts.title),
+                Text(
+                  'Past AI pipeline traces',
+                  style: ts.caption.copyWith(
+                    color: colors.onSurface.withAlpha(100),
+                  ),
+                ),
+              ],
+            ),
             centerTitle: false,
           ),
           alertsAsync.when(
             data: (alerts) {
-              // Filter for reports that have been analyzed (simulated status or have trace)
-              final traceReports = alerts.where((a) => 
-                a.status == ReportStatus.simulated || 
+              final traceReports = alerts.where((a) =>
+                a.status == ReportStatus.simulated ||
                 (a.agentTrace != null && a.agentTrace!.isNotEmpty)
               ).toList();
 
@@ -48,17 +60,27 @@ class TraceHistoryScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.history_rounded, size: 48, color: colors.onSurface.withValues(alpha: 0.2)),
-                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceVariant.withAlpha(80),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.history_rounded,
+                                size: 40, color: colors.onSurface.withAlpha(60)),
+                          ),
+                          const SizedBox(height: 20),
                           Text(
-                            'No analyzed reports yet.',
-                            style: ts.titleMedium,
+                            'No analyzed reports yet',
+                            style: ts.title,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Submit a report to see how AI agents process the crisis.',
-                            style: ts.bodySmall,
+                            style: ts.bodySmall.copyWith(
+                              color: colors.onSurface.withAlpha(120),
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -69,23 +91,28 @@ class TraceHistoryScreen extends ConsumerWidget {
               }
 
               return SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final alert = traceReports[index];
                       return _TraceHistoryCard(alert: alert)
                           .animate()
-                          .fadeIn(delay: (index * 100).ms)
-                          .slideY(begin: 0.1, end: 0);
+                          .fadeIn(delay: (index * 100).ms, duration: 350.ms)
+                          .slideY(begin: 0.05, end: 0, delay: (index * 100).ms);
                     },
                     childCount: traceReports.length,
                   ),
                 ),
               );
             },
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+            loading: () => SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: colors.primary,
+                  strokeWidth: 2.5,
+                ),
+              ),
             ),
             error: (err, stack) => SliverFillRemaining(
               child: Center(
@@ -99,9 +126,16 @@ class TraceHistoryScreen extends ConsumerWidget {
   }
 }
 
-class _TraceHistoryCard extends StatelessWidget {
+class _TraceHistoryCard extends StatefulWidget {
   const _TraceHistoryCard({required this.alert});
   final CrisisAlert alert;
+
+  @override
+  State<_TraceHistoryCard> createState() => _TraceHistoryCardState();
+}
+
+class _TraceHistoryCardState extends State<_TraceHistoryCard> {
+  bool _isPressed = false;
 
   Map<String, dynamic> _buildPipelineResultFromAlert(CrisisAlert alert) {
     return {
@@ -111,7 +145,7 @@ class _TraceHistoryCard extends StatelessWidget {
       'crisis_confidence': alert.crisisConfidence,
       'detected_language': alert.detectedLanguage,
       'normalized_location': alert.areaName,
-      'action_plan': [], // Usually empty for historical viewing unless saved
+      'action_plan': [],
       'simulation_result': alert.simulationResult ?? {},
       'trace': alert.agentTrace ?? [],
     };
@@ -121,85 +155,142 @@ class _TraceHistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = CiroColors.of(context);
     final ts = CiroTextStyles.of(context);
-    
-    // Time ago logic
+    final severityColor = CiroColors.forSeverity(widget.alert.severity?.value ?? 'unknown');
+
     final now = DateTime.now();
-    final diff = alert.createdAt != null ? now.difference(alert.createdAt!) : null;
-    final timeAgo = diff == null 
-        ? 'Unknown' 
-        : diff.inHours > 24 
-            ? '${diff.inDays}d ago' 
-            : diff.inMinutes > 60 
-                ? '${diff.inHours}h ago' 
+    final diff = widget.alert.createdAt != null
+        ? now.difference(widget.alert.createdAt!)
+        : null;
+    final timeAgo = diff == null
+        ? 'Unknown'
+        : diff.inHours > 24
+            ? '${diff.inDays}d ago'
+            : diff.inMinutes > 60
+                ? '${diff.inHours}h ago'
                 : '${diff.inMinutes}m ago';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.divider),
-      ),
-      child: InkWell(
-        onTap: () {
-          context.pushNamed(
-            CiroRoutes.traceName,
-            extra: _buildPipelineResultFromAlert(alert),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      _getTypeIcon(alert.crisisType, colors),
-                      const SizedBox(width: 12),
-                      Text(
-                        alert.crisisType?.displayName.toUpperCase() ?? 'UNKNOWN',
-                        style: ts.labelTiny.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  SeverityBadge(severity: alert.severity?.value ?? 'unknown'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(alert.areaName ?? 'Islamabad', style: ts.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                alert.reportText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: ts.bodySmall.copyWith(color: colors.onSurface.withValues(alpha: 0.7)),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.access_time_rounded, size: 14, color: colors.onSurface),
-                      const SizedBox(width: 4),
-                      Text(timeAgo, style: ts.labelTiny),
-                    ],
-                  ),
-                  _StatusChip(status: alert.status, colors: colors, ts: ts),
-                ],
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        context.pushNamed(
+          CiroRoutes.traceName,
+          extra: _buildPipelineResultFromAlert(widget.alert),
+        );
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: colors.surfaceVariant,
+            borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+            border: Border.all(
+              color: _isPressed
+                  ? severityColor.withAlpha(40)
+                  : CiroColors.glassBorder,
+            ),
+            gradient: CiroColors.cardGradient,
+            boxShadow: [
+              BoxShadow(
+                color: severityColor.withAlpha(_isPressed ? 20 : 8),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
             ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                // ── Severity accent bar ──────────────────────────────
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: severityColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(22),
+                      bottomLeft: Radius.circular(22),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                _getTypeIcon(widget.alert.crisisType, severityColor),
+                                const SizedBox(width: 10),
+                                Text(
+                                  widget.alert.crisisType?.displayName.toUpperCase() ?? 'UNKNOWN',
+                                  style: ts.caption.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.0,
+                                    color: severityColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SeverityBadge(severity: widget.alert.severity?.value ?? 'unknown'),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.alert.areaName ?? 'Islamabad',
+                          style: ts.title.copyWith(fontSize: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.alert.reportText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: ts.bodySmall.copyWith(
+                            color: colors.onSurface.withAlpha(150),
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.access_time_rounded,
+                                    size: 12, color: colors.onSurface.withAlpha(100)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  timeAgo,
+                                  style: ts.caption.copyWith(
+                                    color: colors.onSurface.withAlpha(100),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            _StatusChip(status: widget.alert.status, colors: colors, ts: ts),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _getTypeIcon(CrisisType? type, CiroColorScheme colors) {
+  Widget _getTypeIcon(CrisisType? type, Color color) {
     IconData icon;
     switch (type) {
       case CrisisType.flood: icon = Icons.water_rounded; break;
@@ -209,7 +300,14 @@ class _TraceHistoryCard extends StatelessWidget {
       case CrisisType.infrastructure: icon = Icons.construction_rounded; break;
       default: icon = Icons.emergency_rounded;
     }
-    return Icon(icon, size: 20, color: colors.primary);
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, size: 16, color: color),
+    );
   }
 }
 
@@ -219,21 +317,50 @@ class _StatusChip extends StatelessWidget {
   final CiroColorScheme colors;
   final CiroTextStyleSet ts;
 
+  Color get _color {
+    switch (status) {
+      case ReportStatus.pending:
+        return CiroColors.severityMedium;
+      case ReportStatus.analyzing:
+        return CiroColors.aiAccent;
+      case ReportStatus.resolved:
+        return CiroColors.severityLow;
+      case ReportStatus.simulated:
+        return CiroColors.severityLow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Color color = colors.onSurface;
-    if (status == ReportStatus.simulated) color = colors.secondary;
-    if (status == ReportStatus.analyzing) color = colors.primary;
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
+        color: _color.withAlpha(15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _color.withAlpha(30)),
       ),
-      child: Text(
-        status.displayName.toUpperCase(),
-        style: ts.labelTiny.copyWith(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: _color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            status.displayName.toUpperCase(),
+            style: ts.caption.copyWith(
+              color: _color,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }

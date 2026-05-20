@@ -6,6 +6,9 @@ import 'app_colors.dart';
 
 /// Builds and exposes the two [ThemeData] objects (dark + light) for CIRO.
 ///
+/// Premium command-center theme with glassmorphism support, elevated corners,
+/// and refined component styles matching the emergency palette.
+///
 /// Usage in [MaterialApp] / [MaterialApp.router]:
 /// ```dart
 /// MaterialApp.router(
@@ -23,6 +26,19 @@ abstract final class CiroTheme {
 
   static final ThemeData dark = _build(isDark: true);
   static final ThemeData light = _build(isDark: false);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SHARED CONSTANTS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /// Global corner radius for cards, sheets, dialogs.
+  static const double cardRadius = 22.0;
+  /// Smaller radius for chips, badges, input fields.
+  static const double chipRadius = 12.0;
+  /// Large radius for bottom sheets, modals.
+  static const double sheetRadius = 28.0;
+  /// Button corner radius.
+  static const double buttonRadius = 14.0;
 
   // ═══════════════════════════════════════════════════════════════════════
   // BUILDER
@@ -43,21 +59,21 @@ abstract final class CiroTheme {
       secondary: c.secondary,
       onSecondary: const Color(0xFFFFFFFF),
       secondaryContainer: isDark
-          ? const Color(0xFF1A3D22)
+          ? const Color(0xFF0F2A1B)
           : const Color(0xFFD8EFDE),
       onSecondaryContainer: c.onBackground,
-      // Tertiary (mapped to warning for Material 3 compatibility)
+      // Tertiary (mapped to warning)
       tertiary: c.warning,
       onTertiary: const Color(0xFFFFFFFF),
       tertiaryContainer: isDark
-          ? const Color(0xFF3D2F00)
+          ? const Color(0xFF2D2200)
           : const Color(0xFFFFF3CD),
       onTertiaryContainer: c.onBackground,
       // Error
       error: c.error,
       onError: const Color(0xFFFFFFFF),
       errorContainer: isDark
-          ? const Color(0xFF3D0B09)
+          ? const Color(0xFF2D0A0E)
           : const Color(0xFFFFDAD6),
       onErrorContainer: c.onBackground,
       // Surface
@@ -67,50 +83,55 @@ abstract final class CiroTheme {
       onSurfaceVariant: c.onSurface,
       // Outline
       outline: c.divider,
-      outlineVariant: c.divider.withValues(alpha: 0.5),
+      outlineVariant: isDark
+          ? const Color(0x08FFFFFF)
+          : c.divider.withAlpha(128),
       // Scaffold / background
-      shadow: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
-      scrim: Colors.black.withValues(alpha: isDark ? 0.7 : 0.3),
-      inverseSurface: isDark ? const Color(0xFFE6EDF3) : const Color(0xFF161B22),
-      onInverseSurface: isDark ? const Color(0xFF0D1117) : const Color(0xFFE6EDF3),
-      inversePrimary: isDark ? const Color(0xFF0969DA) : const Color(0xFF2F81F7),
+      shadow: Colors.black.withAlpha(isDark ? 153 : 38),
+      scrim: Colors.black.withAlpha(isDark ? 178 : 76),
+      inverseSurface: isDark ? const Color(0xFFF5F7FA) : const Color(0xFF0E1623),
+      onInverseSurface: isDark ? const Color(0xFF060B14) : const Color(0xFFF5F7FA),
+      inversePrimary: isDark ? const Color(0xFF2B7FE0) : const Color(0xFF4DA3FF),
     );
 
     // ── Inter text theme via google_fonts ───────────────────────────────
     final textTheme = GoogleFonts.interTextTheme(
       TextTheme(
-        // Display — 32sp / w700
+        // Display — 36sp / w700
         displayLarge: TextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
+          color: c.onBackground,
+          letterSpacing: -0.5,
+          height: 1.15,
+        ),
+        displayMedium: TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.w700,
           color: c.onBackground,
           letterSpacing: -0.5,
           height: 1.2,
         ),
-        displayMedium: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: c.onBackground,
-          letterSpacing: -0.25,
-          height: 1.2,
-        ),
         displaySmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: c.onBackground,
-          height: 1.25,
-        ),
-        // Headline — 24sp / w600
-        headlineLarge: TextStyle(
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: FontWeight.w600,
           color: c.onBackground,
-          height: 1.3,
+          letterSpacing: -0.3,
+          height: 1.25,
+        ),
+        // Headline — 28sp / w600
+        headlineLarge: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          color: c.onBackground,
+          letterSpacing: -0.3,
+          height: 1.25,
         ),
         headlineMedium: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: c.onBackground,
+          letterSpacing: -0.2,
           height: 1.3,
         ),
         headlineSmall: TextStyle(
@@ -119,12 +140,13 @@ abstract final class CiroTheme {
           color: c.onBackground,
           height: 1.35,
         ),
-        // Title — 18sp / w600
+        // Title — 20sp / w600
         titleLarge: TextStyle(
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w600,
           color: c.onBackground,
-          height: 1.35,
+          letterSpacing: -0.2,
+          height: 1.3,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
@@ -140,15 +162,15 @@ abstract final class CiroTheme {
           letterSpacing: 0.1,
           height: 1.4,
         ),
-        // Body — 14sp / w400
+        // Body — 15sp / w400
         bodyLarge: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w400,
           color: c.onBackground,
-          height: 1.5,
+          height: 1.55,
         ),
         bodyMedium: TextStyle(
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w400,
           color: c.onBackground,
           height: 1.5,
@@ -159,7 +181,7 @@ abstract final class CiroTheme {
           color: c.onSurface,
           height: 1.5,
         ),
-        // Label — 12sp / w500
+        // Label — 12sp / w500 / uppercase
         labelLarge: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -170,7 +192,7 @@ abstract final class CiroTheme {
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: c.onSurface,
-          letterSpacing: 0.5,
+          letterSpacing: 1.2,
         ),
         labelSmall: TextStyle(
           fontSize: 11,
@@ -185,12 +207,12 @@ abstract final class CiroTheme {
     final systemOverlayStyle = isDark
         ? SystemUiOverlayStyle.light.copyWith(
             statusBarColor: Colors.transparent,
-            systemNavigationBarColor: c.surface,
+            systemNavigationBarColor: Colors.transparent,
             systemNavigationBarIconBrightness: Brightness.light,
           )
         : SystemUiOverlayStyle.dark.copyWith(
             statusBarColor: Colors.transparent,
-            systemNavigationBarColor: c.surface,
+            systemNavigationBarColor: Colors.transparent,
             systemNavigationBarIconBrightness: Brightness.dark,
           );
 
@@ -200,7 +222,7 @@ abstract final class CiroTheme {
 
     // ── AppBar ──────────────────────────────────────────────────────────
     final appBarTheme = AppBarTheme(
-      backgroundColor: c.surface,
+      backgroundColor: Colors.transparent,
       foregroundColor: c.onBackground,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -208,22 +230,19 @@ abstract final class CiroTheme {
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
       titleTextStyle: GoogleFonts.inter(
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w600,
         color: c.onBackground,
-        letterSpacing: 0,
+        letterSpacing: -0.2,
       ),
-      iconTheme: IconThemeData(color: c.onBackground, size: 24),
-      actionsIconTheme: IconThemeData(color: c.onSurface, size: 24),
+      iconTheme: IconThemeData(color: c.onBackground, size: 22),
+      actionsIconTheme: IconThemeData(color: c.onSurface, size: 22),
       systemOverlayStyle: systemOverlayStyle,
-      shape: Border(
-        bottom: BorderSide(color: c.divider, width: 1),
-      ),
     );
 
     // ── Bottom Navigation Bar ───────────────────────────────────────────
     final bottomNavBarTheme = BottomNavigationBarThemeData(
-      backgroundColor: c.surface,
+      backgroundColor: Colors.transparent,
       selectedItemColor: c.primary,
       unselectedItemColor: c.onSurface,
       showSelectedLabels: true,
@@ -232,7 +251,7 @@ abstract final class CiroTheme {
       elevation: 0,
       selectedLabelStyle: GoogleFonts.inter(
         fontSize: 11,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
       unselectedLabelStyle: GoogleFonts.inter(
         fontSize: 11,
@@ -242,8 +261,8 @@ abstract final class CiroTheme {
 
     // ── NavigationBar (Material 3) ──────────────────────────────────────
     final navigationBarTheme = NavigationBarThemeData(
-      backgroundColor: c.surface,
-      indicatorColor: c.primaryContainer,
+      backgroundColor: Colors.transparent,
+      indicatorColor: c.primary.withAlpha(30),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return IconThemeData(color: c.primary, size: 24);
@@ -271,12 +290,12 @@ abstract final class CiroTheme {
 
     // ── Card ────────────────────────────────────────────────────────────
     final cardTheme = CardThemeData(
-      color: c.surface,
+      color: c.surfaceVariant,
       shadowColor: Colors.transparent,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(cardRadius),
         side: BorderSide(color: c.divider, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
@@ -285,9 +304,9 @@ abstract final class CiroTheme {
     // ── ElevatedButton ──────────────────────────────────────────────────
     final elevatedButtonTheme = ElevatedButtonThemeData(
       style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+        minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
         padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
@@ -298,22 +317,22 @@ abstract final class CiroTheme {
         foregroundColor: const WidgetStatePropertyAll(Color(0xFFFFFFFF)),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
-            return Colors.white.withValues(alpha: 0.12);
+            return Colors.white.withAlpha(30);
           }
           if (states.contains(WidgetState.hovered)) {
-            return Colors.white.withValues(alpha: 0.06);
+            return Colors.white.withAlpha(15);
           }
           return Colors.transparent;
         }),
         elevation: const WidgetStatePropertyAll(0),
         shadowColor: const WidgetStatePropertyAll(Colors.transparent),
-        shape: const WidgetStatePropertyAll(
+        shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
         ),
         textStyle: WidgetStatePropertyAll(
-          GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+          GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -321,34 +340,31 @@ abstract final class CiroTheme {
     // ── OutlinedButton ──────────────────────────────────────────────────
     final outlinedButtonTheme = OutlinedButtonThemeData(
       style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+        minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
         padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
         foregroundColor: WidgetStatePropertyAll(c.primary),
         side: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return BorderSide(color: c.divider);
           }
-          return BorderSide(color: c.primary);
+          return BorderSide(color: c.primary.withAlpha(128));
         }),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
-            return c.primary.withValues(alpha: 0.10);
-          }
-          if (states.contains(WidgetState.hovered)) {
-            return c.primary.withValues(alpha: 0.05);
+            return c.primary.withAlpha(25);
           }
           return Colors.transparent;
         }),
         elevation: const WidgetStatePropertyAll(0),
-        shape: const WidgetStatePropertyAll(
+        shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
         ),
         textStyle: WidgetStatePropertyAll(
-          GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+          GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -360,7 +376,7 @@ abstract final class CiroTheme {
         foregroundColor: WidgetStatePropertyAll(c.primary),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
-            return c.primary.withValues(alpha: 0.10);
+            return c.primary.withAlpha(25);
           }
           return Colors.transparent;
         }),
@@ -378,13 +394,13 @@ abstract final class CiroTheme {
       focusElevation: 0,
       hoverElevation: 0,
       highlightElevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
 
     // ── Chip ────────────────────────────────────────────────────────────
     final chipTheme = ChipThemeData(
       backgroundColor: c.surfaceVariant,
-      selectedColor: c.primaryContainer,
+      selectedColor: c.primary.withAlpha(40),
       labelStyle: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w500,
@@ -396,8 +412,8 @@ abstract final class CiroTheme {
         color: c.primary,
       ),
       side: BorderSide(color: c.divider, width: 1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(chipRadius)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       elevation: 0,
       pressElevation: 0,
     );
@@ -412,35 +428,35 @@ abstract final class CiroTheme {
     // ── InputDecoration (TextField) ─────────────────────────────────────
     final inputDecorationTheme = InputDecorationTheme(
       filled: true,
-      fillColor: c.surfaceVariant,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      fillColor: c.surfaceVariant.withAlpha(128),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: c.divider, width: 1),
+        borderRadius: BorderRadius.circular(buttonRadius),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(buttonRadius),
         borderSide: BorderSide(color: c.divider, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(buttonRadius),
         borderSide: BorderSide(color: c.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(buttonRadius),
         borderSide: BorderSide(color: c.error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(buttonRadius),
         borderSide: BorderSide(color: c.error, width: 1.5),
       ),
       hintStyle: GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w400,
-        color: c.onSurface,
+        color: c.onSurface.withAlpha(128),
       ),
       labelStyle: GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w400,
         color: c.onSurface,
       ),
@@ -458,17 +474,15 @@ abstract final class CiroTheme {
 
     // ── SnackBar ────────────────────────────────────────────────────────
     final snackBarTheme = SnackBarThemeData(
-      backgroundColor: isDark
-          ? const Color(0xFF2D333B)
-          : const Color(0xFF24292F),
+      backgroundColor: c.surfaceVariant,
       contentTextStyle: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: const Color(0xFFE6EDF3),
+        color: c.onBackground,
       ),
       actionTextColor: c.primary,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(chipRadius)),
       elevation: 0,
     );
 
@@ -479,16 +493,16 @@ abstract final class CiroTheme {
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(cardRadius),
         side: BorderSide(color: c.divider, width: 1),
       ),
       titleTextStyle: GoogleFonts.inter(
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w600,
         color: c.onBackground,
       ),
       contentTextStyle: GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w400,
         color: c.onSurface,
       ),
@@ -499,7 +513,7 @@ abstract final class CiroTheme {
       color: c.primary,
       linearTrackColor: c.surfaceVariant,
       circularTrackColor: c.surfaceVariant,
-      linearMinHeight: 4,
+      linearMinHeight: 3,
     );
 
     // ── Switch ──────────────────────────────────────────────────────────
@@ -523,7 +537,7 @@ abstract final class CiroTheme {
     // ── ListTile ────────────────────────────────────────────────────────
     final listTileTheme = ListTileThemeData(
       tileColor: Colors.transparent,
-      selectedTileColor: c.primaryContainer,
+      selectedTileColor: c.primary.withAlpha(20),
       iconColor: c.onSurface,
       textColor: c.onBackground,
       subtitleTextStyle: GoogleFonts.inter(
@@ -532,47 +546,48 @@ abstract final class CiroTheme {
         color: c.onSurface,
       ),
       titleTextStyle: GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w500,
         color: c.onBackground,
       ),
       minLeadingWidth: 24,
-      minTileHeight: 48,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      minTileHeight: 52,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
 
     // ── Tooltip ─────────────────────────────────────────────────────────
     final tooltipTheme = TooltipThemeData(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2D333B) : const Color(0xFF1F2328),
-        borderRadius: BorderRadius.circular(6),
+        color: c.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: c.divider),
       ),
       textStyle: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: const Color(0xFFE6EDF3),
+        color: c.onBackground,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       waitDuration: const Duration(milliseconds: 500),
     );
 
     // ── IconButton ──────────────────────────────────────────────────────
     final iconButtonTheme = IconButtonThemeData(
       style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-        iconSize: const WidgetStatePropertyAll(24),
+        minimumSize: const WidgetStatePropertyAll(Size(44, 44)),
+        iconSize: const WidgetStatePropertyAll(22),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
-            return c.onSurface.withValues(alpha: 0.12);
+            return c.onSurface.withAlpha(30);
           }
           if (states.contains(WidgetState.hovered)) {
-            return c.onSurface.withValues(alpha: 0.06);
+            return c.onSurface.withAlpha(15);
           }
           return Colors.transparent;
         }),
-        shape: const WidgetStatePropertyAll(
+        shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderRadius: BorderRadius.circular(chipRadius),
           ),
         ),
       ),
@@ -587,7 +602,7 @@ abstract final class CiroTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: c.background,
       canvasColor: c.background,
-      splashFactory: InkRipple.splashFactory,
+      splashFactory: InkSplash.splashFactory,
 
       // Typography
       textTheme: textTheme,
@@ -614,13 +629,13 @@ abstract final class CiroTheme {
       iconButtonTheme: iconButtonTheme,
 
       // Global icon theme
-      iconTheme: IconThemeData(color: c.onBackground, size: 24),
-      primaryIconTheme: IconThemeData(color: c.primary, size: 24),
+      iconTheme: IconThemeData(color: c.onBackground, size: 22),
+      primaryIconTheme: IconThemeData(color: c.primary, size: 22),
 
       // Ink / ripple
-      highlightColor: c.onSurface.withValues(alpha: 0.06),
-      splashColor: c.primary.withValues(alpha: 0.10),
-      hoverColor: c.onSurface.withValues(alpha: 0.04),
+      highlightColor: c.onSurface.withAlpha(15),
+      splashColor: c.primary.withAlpha(25),
+      hoverColor: c.onSurface.withAlpha(10),
 
       // Deprecated surface fields kept for widget back-compat
       // ignore: deprecated_member_use

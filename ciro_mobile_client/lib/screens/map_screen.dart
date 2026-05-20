@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,6 +10,8 @@ import '../models/crisis_alert.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_theme.dart';
+import '../widgets/animated_pulse.dart';
 
 class MapScreen extends ConsumerWidget {
   const MapScreen({super.key});
@@ -21,14 +24,15 @@ class MapScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return alertsAsync.when(
-      data: (alerts) => _buildMapContent(context, ref, alerts, colors, ts, isDark),
+      data: (alerts) =>
+          _buildMapContent(context, ref, alerts, colors, ts, isDark),
       loading: () => Stack(
         children: [
           _buildMapBase(const []),
           Container(
-            color: colors.background.withOpacity(0.5),
-            child: const Center(
-              child: CircularProgressIndicator(),
+            color: colors.background.withAlpha(128),
+            child: Center(
+              child: CircularProgressIndicator(color: colors.primary),
             ),
           ),
         ],
@@ -37,17 +41,19 @@ class MapScreen extends ConsumerWidget {
         children: [
           _buildMapBase(const []),
           Container(
-            color: colors.background.withOpacity(0.8),
+            color: colors.background.withAlpha(200),
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline_rounded, size: 48, color: colors.error),
+                  Icon(Icons.error_outline_rounded,
+                      size: 48, color: colors.error),
                   const SizedBox(height: 16),
                   Text('Failed to load active reports', style: ts.title),
                   const SizedBox(height: 8),
-                  Text(err.toString(), style: ts.bodySmall, textAlign: TextAlign.center),
+                  Text(err.toString(),
+                      style: ts.bodySmall, textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => ref.refresh(allAlertsProvider),
@@ -65,7 +71,7 @@ class MapScreen extends ConsumerWidget {
   Widget _buildMapBase(List<Marker> markers) {
     return FlutterMap(
       options: const MapOptions(
-        initialCenter: LatLng(33.6938, 73.0479), // Islamabad Center
+        initialCenter: LatLng(33.6938, 73.0479),
         initialZoom: 12,
       ),
       children: [
@@ -86,12 +92,11 @@ class MapScreen extends ConsumerWidget {
     CiroTextStyleSet ts,
     bool isDark,
   ) {
-    // Generate markers
+    // Generate markers with glow effects
     final markers = alerts.map((alert) {
       double lat = alert.locationLat ?? 33.6938;
       double lng = alert.locationLng ?? 73.0479;
 
-      // Handle placeholder coordinate jittering to prevent overlapping
       if (lat == 33.6844 && lng == 73.0479) {
         final hash = alert.id.hashCode;
         lat += ((hash % 10) - 5) * 0.0015;
@@ -121,13 +126,13 @@ class MapScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: severityColor,
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
+          border: Border.all(color: Colors.white.withAlpha(200), width: 2),
           boxShadow: [
             BoxShadow(
-              color: severityColor.withOpacity(0.6),
-              blurRadius: 8,
+              color: severityColor.withAlpha(150),
+              blurRadius: 10,
               spreadRadius: 2,
-            )
+            ),
           ],
         ),
       );
@@ -137,7 +142,7 @@ class MapScreen extends ConsumerWidget {
             .animate(onPlay: (controller) => controller.repeat(reverse: true))
             .scale(
               begin: const Offset(0.8, 0.8),
-              end: const Offset(1.2, 1.2),
+              end: const Offset(1.3, 1.3),
               duration: 1000.ms,
               curve: Curves.easeInOut,
             );
@@ -164,14 +169,18 @@ class MapScreen extends ConsumerWidget {
     }).toList();
 
     return Scaffold(
+      backgroundColor: colors.background,
       appBar: AppBar(
+        backgroundColor: colors.background,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Crisis Map', style: ts.title),
             Text(
               '${alerts.length} active reports',
-              style: ts.labelTiny.copyWith(color: colors.onSurface),
+              style: ts.caption.copyWith(
+                color: colors.onSurface.withAlpha(170),
+              ),
             ),
           ],
         ),
@@ -180,7 +189,7 @@ class MapScreen extends ConsumerWidget {
             icon: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               color: colors.onSurface,
-              size: 22,
+              size: 20,
             ),
             tooltip: isDark ? 'Light theme' : 'Dark theme',
             onPressed: () {
@@ -195,66 +204,147 @@ class MapScreen extends ConsumerWidget {
         children: [
           _buildMapBase(markers),
 
-          // Severity Legend (Bottom Left Corner)
+          // ── Premium glass severity legend ─────────────────────────
           Positioned(
             bottom: 24,
-            left: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: colors.surface.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.divider),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+            left: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withAlpha(220),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: CiroColors.glassBorder),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(50),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'SEVERITY LEGEND',
-                    style: ts.bodySmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 10,
-                      letterSpacing: 1.1,
-                      color: colors.primary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'SEVERITY',
+                        style: ts.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          color: colors.primary.withAlpha(180),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _LegendItem(
+                          color: CiroColors.severityCritical,
+                          label: 'Critical',
+                          ts: ts),
+                      const SizedBox(height: 7),
+                      _LegendItem(
+                          color: CiroColors.severityHigh,
+                          label: 'High',
+                          ts: ts),
+                      const SizedBox(height: 7),
+                      _LegendItem(
+                          color: CiroColors.severityMedium,
+                          label: 'Medium',
+                          ts: ts),
+                      const SizedBox(height: 7),
+                      _LegendItem(
+                          color: CiroColors.severityLow, label: 'Low', ts: ts),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  _LegendItem(color: CiroColors.severityCritical, label: 'Critical', ts: ts),
-                  const SizedBox(height: 6),
-                  _LegendItem(color: CiroColors.severityHigh, label: 'High', ts: ts),
-                  const SizedBox(height: 6),
-                  _LegendItem(color: CiroColors.severityMedium, label: 'Medium', ts: ts),
-                  const SizedBox(height: 6),
-                  _LegendItem(color: CiroColors.severityLow, label: 'Low', ts: ts),
-                ],
+                ),
               ),
-            ),
+            )
+                .animate()
+                .fadeIn(delay: 300.ms, duration: 400.ms)
+                .slideY(begin: 0.1, end: 0, delay: 300.ms),
           ),
 
-          // Empty state overlay
+          // ── Stats overlay (top right) ────────────────────────────
+          Positioned(
+            top: 16,
+            right: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withAlpha(200),
+                    borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+                    border: Border.all(color: CiroColors.glassBorder),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedPulse(
+                        color:
+                            alerts.any((a) => a.severity?.value == 'critical')
+                                ? CiroColors.severityCritical
+                                : CiroColors.statusOperational,
+                        size: 8,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'LIVE',
+                        style: ts.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          fontSize: 10,
+                          color: colors.onBackground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 200.ms, duration: 300.ms),
+          ),
+
+          // ── Empty state ──────────────────────────────────────────
           if (alerts.isEmpty)
             IgnorePointer(
               child: Container(
-                color: colors.background.withOpacity(0.4),
+                color: colors.background.withAlpha(100),
                 child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: colors.surface.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.divider),
-                    ),
-                    child: Text(
-                      'No active crisis reports',
-                      style: ts.body.copyWith(fontWeight: FontWeight.bold),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 24),
+                        decoration: BoxDecoration(
+                          color: colors.surface.withAlpha(220),
+                          borderRadius:
+                              BorderRadius.circular(CiroTheme.cardRadius),
+                          border: Border.all(color: CiroColors.glassBorder),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_outline_rounded,
+                                size: 40,
+                                color: CiroColors.severityLow.withAlpha(120)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No active crisis reports',
+                              style:
+                                  ts.body.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -289,6 +379,13 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withAlpha(80),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 10),
@@ -297,7 +394,7 @@ class _LegendItem extends StatelessWidget {
           style: ts.bodySmall.copyWith(
             color: colors.onBackground,
             fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

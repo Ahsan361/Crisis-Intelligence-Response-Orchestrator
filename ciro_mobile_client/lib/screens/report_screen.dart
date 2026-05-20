@@ -12,7 +12,9 @@ import '../providers/app_providers.dart';
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
-
+import '../theme/app_theme.dart';
+import '../widgets/glow_button.dart';
+import '../widgets/animated_pulse.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REPORT SCREEN STATE ENUM
@@ -47,7 +49,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   // Screen State
   ReportScreenState _state = ReportScreenState.idle;
-  int _activeStepIndex = -1; // -1 to 4
+  int _activeStepIndex = -1;
   Timer? _visualTimer;
   bool _isFetchingAddress = false;
 
@@ -68,7 +70,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     setState(() => _state = ReportScreenState.submitting);
 
     try {
-      // 1. Submit Report
       final repo = ref.read(alertsRepositoryProvider);
 
       final newReport = CrisisAlert(
@@ -87,16 +88,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
       final createdReport = await repo.createAlert(newReport);
 
-      // 2. Start Analysis Pipeline
       setState(() {
         _state = ReportScreenState.analyzing;
-        _activeStepIndex = 0; // Step 0 (Signal Collector) active immediately
+        _activeStepIndex = 0;
       });
 
-      // Start visual auto-progression (capped at Step 3)
       _startVisualProgression();
 
-      // FIX 3: analyze() returns void. We await it, then read the state.
       await ref.read(analyzeAlertProvider.notifier).analyze(
             reportId: createdReport.id,
             reportText: createdReport.reportText,
@@ -105,11 +103,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             locationLng: _locationLng,
           );
 
-      // Read result from the provider state
       final analysisState = ref.read(analyzeAlertProvider);
       final resultData = analysisState.value;
 
-      // 3. Pipeline Success Logic
       _onPipelineBackendResponse(resultData);
     } catch (e) {
       if (mounted) {
@@ -152,7 +148,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
       if (response.data != null) {
         final addr = response.data['address'] ?? {};
-        // Hierarchy: neighbourhood -> suburb -> city_district -> fallback
         String? name = addr['neighbourhood'] ??
             addr['suburb'] ??
             addr['city_district'] ??
@@ -200,11 +195,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = CiroColors.of(context);
-    // FIX 2: CiroTextStyleSet is the correct type from app_text_styles.dart
     final CiroTextStyleSet ts = CiroTextStyles.of(context);
 
     return Scaffold(
+      backgroundColor: colors.background,
       appBar: AppBar(
+        backgroundColor: colors.background,
         title: Text('Submit Report', style: ts.title),
         leading: context.canPop()
             ? IconButton(
@@ -235,66 +231,96 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Report Details', style: ts.headline),
+            // ── Header ─────────────────────────────────────────────────
+            Text('Report Details', style: ts.headline.copyWith(fontSize: 22)),
             const SizedBox(height: 8),
-            Text(
-              'Provide accurate information to help agents analyze the situation.',
-              style: ts.bodySmall
-                  .copyWith(color: colors.onSurface.withValues(alpha: 0.6)),
+            Row(
+              children: [
+                Icon(Icons.smart_toy_rounded,
+                    size: 14, color: CiroColors.aiAccent),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'AI agents will analyze your report in real-time.',
+                    style: ts.caption
+                        .copyWith(color: CiroColors.aiAccent.withAlpha(180)),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
+
+            // ── Crisis Description ─────────────────────────────────────
             _buildFieldLabel('CRISIS DESCRIPTION', ts, colors),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _reportTextController,
-              maxLines: 5,
-              minLines: 4,
-              maxLength: 500,
-              style: ts.body,
-              decoration: _inputDecoration(
-                'Describe the crisis... (English, Urdu, or Roman Urdu)',
-                colors,
-              ),
-              validator: (v) {
-                if (v == null || v.length < 10)
-                  return 'Min 10 characters required';
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            _buildFieldLabel('AREA / LOCATION', ts, colors),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _areaNameController,
-              style: ts.body,
-              decoration: _inputDecoration(
-                'e.g. G-10 Markaz, Blue Area, F-7',
-                colors,
-              ).copyWith(
-                suffixIcon: _isFetchingAddress
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : null,
-              ),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Area name is required';
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            _buildFieldLabel('INCIDENT LOCATION', ts, colors),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
-              height: 250,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.divider),
+                borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
+                border: Border.all(color: CiroColors.glassBorder),
+                gradient: CiroColors.cardGradient,
+              ),
+              child: TextFormField(
+                controller: _reportTextController,
+                maxLines: 5,
+                minLines: 4,
+                maxLength: 500,
+                style: ts.body,
+                decoration: _inputDecoration(
+                  'Describe the crisis... (English, Urdu, or Roman Urdu)',
+                  colors,
+                ),
+                validator: (v) {
+                  if (v == null || v.length < 10)
+                    return 'Min 10 characters required';
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Area / Location ────────────────────────────────────────
+            _buildFieldLabel('AREA / LOCATION', ts, colors),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
+                border: Border.all(color: CiroColors.glassBorder),
+                gradient: CiroColors.cardGradient,
+              ),
+              child: TextFormField(
+                controller: _areaNameController,
+                style: ts.body,
+                decoration: _inputDecoration(
+                  'e.g. G-10 Markaz, Blue Area, F-7',
+                  colors,
+                ).copyWith(
+                  suffixIcon: _isFetchingAddress
+                      ? const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Area name is required';
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Map ────────────────────────────────────────────────────
+            _buildFieldLabel('INCIDENT LOCATION', ts, colors),
+            const SizedBox(height: 10),
+            Container(
+              height: 220,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+                border: Border.all(color: CiroColors.glassBorder),
               ),
               clipBehavior: Clip.antiAlias,
               child: FlutterMap(
@@ -325,7 +351,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           height: 40,
                           child: Icon(
                             Icons.location_on_rounded,
-                            color: colors.error,
+                            color: CiroColors.severityCritical,
                             size: 40,
                           ),
                         ),
@@ -341,68 +367,83 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   : '📍 Tap map to set location',
               style: ts.mono.copyWith(
                 fontSize: 10,
-                color: _locationSet ? colors.primary : colors.onSurface,
+                color: _locationSet
+                    ? colors.primary
+                    : colors.onSurface.withAlpha(100),
               ),
             ),
             const SizedBox(height: 24),
+
+            // ── Report Source ───────────────────────────────────────────
             _buildFieldLabel('REPORT SOURCE', ts, colors),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: ReportSource.values.map((s) {
                 final isSelected = _selectedSource == s;
-                return ChoiceChip(
-                  label: Text(s.displayName),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedSource = s);
-                  },
-                  selectedColor: colors.primary.withValues(alpha: 0.2),
-                  labelStyle: ts.bodySmall.copyWith(
-                    color: isSelected ? colors.primary : colors.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedSource = s),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? colors.primary.withAlpha(20)
+                          : colors.surfaceVariant.withAlpha(100),
+                      borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+                      border: Border.all(
+                        color: isSelected
+                            ? colors.primary.withAlpha(80)
+                            : CiroColors.glassBorder,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      s.displayName,
+                      style: ts.bodySmall.copyWith(
+                        color: isSelected ? colors.primary : colors.onSurface,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 );
               }).toList(),
             ),
             const SizedBox(height: 24),
+
+            // ── Reporter ───────────────────────────────────────────────
             _buildFieldLabel('REPORTER (OPTIONAL)', ts, colors),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _reportedByController,
-              style: ts.body,
-              decoration:
-                  _inputDecoration('Your name or source identifier', colors),
-            ),
-            const SizedBox(height: 48),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _state == ReportScreenState.submitting
-                    ? null
-                    : _submitAndAnalyze,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 4,
-                  shadowColor: colors.primary.withValues(alpha: 0.4),
-                ),
-                child: _state == ReportScreenState.submitting
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Submit & Analyze',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
+                border: Border.all(color: CiroColors.glassBorder),
+                gradient: CiroColors.cardGradient,
+              ),
+              child: TextFormField(
+                controller: _reportedByController,
+                style: ts.body,
+                decoration:
+                    _inputDecoration('Your name or source identifier', colors),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 40),
+
+            // ── Submit Button ──────────────────────────────────────────
+            GlowButton(
+              label: 'Submit & Analyze',
+              icon: Icons.rocket_launch_rounded,
+              onPressed: _submitAndAnalyze,
+              gradient: CiroColors.reportButtonGradient,
+              glowColor: colors.primary,
+              isLoading: _state == ReportScreenState.submitting,
+              enabled: _state != ReportScreenState.submitting,
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -413,11 +454,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       String label, CiroTextStyleSet ts, CiroColorScheme colors) {
     return Text(
       label,
-      style: ts.bodySmall.copyWith(
+      style: ts.caption.copyWith(
         fontSize: 11,
-        letterSpacing: 1.2,
+        letterSpacing: 1.5,
         fontWeight: FontWeight.w700,
-        color: colors.primary,
+        color: colors.primary.withAlpha(180),
       ),
     );
   }
@@ -425,24 +466,31 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   InputDecoration _inputDecoration(String hint, CiroColorScheme colors) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: colors.onSurface.withValues(alpha: 0.3)),
+      hintStyle: TextStyle(
+        color: colors.onSurface.withAlpha(150),
+        fontSize: 14,
+      ),
       filled: true,
-      fillColor: colors.surfaceVariant.withValues(alpha: 0.3),
+      fillColor: Colors.transparent,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
+        borderSide: BorderSide.none,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(CiroTheme.buttonRadius),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PIPELINE PROGRESS VIEW
+// PIPELINE PROGRESS VIEW — Premium AI operations display
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _PipelineProgressView extends StatelessWidget {
@@ -455,11 +503,27 @@ class _PipelineProgressView extends StatelessWidget {
   final bool isComplete;
 
   static const _steps = [
-    'Signal Collector',
-    'Crisis Detector',
-    'Reasoning Analyzer',
-    'Action Planner',
-    'Simulator',
+    (
+      name: 'Signal Collector',
+      icon: Icons.sensors_rounded,
+      color: Color(0xFFB26BFF)
+    ),
+    (
+      name: 'Crisis Detector',
+      icon: Icons.emergency_rounded,
+      color: Color(0xFFFF4D5E)
+    ),
+    (
+      name: 'Reasoning Analyzer',
+      icon: Icons.psychology_rounded,
+      color: Color(0xFFFFC857)
+    ),
+    (
+      name: 'Action Planner',
+      icon: Icons.task_alt_rounded,
+      color: Color(0xFF3DDC97)
+    ),
+    (name: 'Simulator', icon: Icons.speed_rounded, color: Color(0xFF4DA3FF)),
   ];
 
   @override
@@ -470,152 +534,141 @@ class _PipelineProgressView extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // ── Header ─────────────────────────────────────────────────
+            Icon(
+              isComplete ? Icons.check_circle_rounded : Icons.smart_toy_rounded,
+              size: 48,
+              color: isComplete ? CiroColors.severityLow : CiroColors.aiAccent,
+            )
+                .animate()
+                .fadeIn(duration: 400.ms)
+                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
+            const SizedBox(height: 20),
             Text(
               isComplete ? 'Analysis Complete' : 'AI Agents Running',
               style: ts.headline,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               isComplete
-                  ? 'The pipeline has finished processing. Redirecting...'
-                  : 'Orchestrating multi-agent reasoning for the reported crisis.',
-              style: ts.bodySmall
-                  .copyWith(color: colors.onSurface.withValues(alpha: 0.6)),
+                  ? 'Pipeline finished. Redirecting to trace view...'
+                  : 'Orchestrating multi-agent reasoning',
+              style: ts.bodySmall.copyWith(
+                color: colors.onSurface.withAlpha(150),
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 48),
-            Stack(
-              children: [
-                Container(
-                  height: 6,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: colors.divider,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 800),
-                  height: 6,
-                  width: MediaQuery.of(context).size.width * 0.8 * progress,
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    borderRadius: BorderRadius.circular(3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.primary.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      )
-                    ],
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 40),
-            Column(
-              children: List.generate(_steps.length, (i) {
-                final isDone = i < stepIndex || isComplete;
-                final isActive = i == stepIndex && !isComplete;
 
-                return _StepItem(
-                  label: _steps[i],
-                  isDone: isDone,
-                  isActive: isActive,
-                  colors: colors,
-                  ts: ts,
-                );
-              }),
+            // ── Progress Bar ───────────────────────────────────────────
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 4,
+                    width: double.infinity,
+                    color: colors.surfaceVariant,
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOut,
+                    height: 4,
+                    width: MediaQuery.of(context).size.width * 0.75 * progress,
+                    decoration: BoxDecoration(
+                      gradient: CiroColors.reportButtonGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.primary.withAlpha(100),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 36),
+
+            // ── Agent Steps ────────────────────────────────────────────
+            ...List.generate(_steps.length, (i) {
+              final isDone = i < stepIndex || isComplete;
+              final isActive = i == stepIndex && !isComplete;
+              final step = _steps[i];
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? step.color.withAlpha(10)
+                      : colors.surfaceVariant.withAlpha(isDone ? 100 : 40),
+                  borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+                  border: Border.all(
+                    color: isActive
+                        ? step.color.withAlpha(40)
+                        : CiroColors.glassBorder,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Status indicator
+                    if (isDone)
+                      Icon(Icons.check_circle_rounded,
+                          size: 20, color: step.color)
+                    else if (isActive)
+                      AnimatedPulse(color: step.color, size: 8)
+                    else
+                      Icon(Icons.circle_outlined,
+                          size: 20, color: colors.onSurface.withAlpha(40)),
+                    const SizedBox(width: 14),
+                    Icon(step.icon,
+                        size: 18,
+                        color: isDone || isActive
+                            ? step.color
+                            : colors.onSurface.withAlpha(60)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        step.name,
+                        style: ts.body.copyWith(
+                          color: isDone || isActive
+                              ? colors.onBackground
+                              : colors.onSurface.withAlpha(80),
+                          fontWeight:
+                              isActive ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    if (isActive)
+                      Text(
+                        'ACTIVE',
+                        style: ts.caption.copyWith(
+                          color: step.color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                        ),
+                      )
+                          .animate(onPlay: (c) => c.repeat())
+                          .fadeIn(duration: 600.ms)
+                          .then()
+                          .fadeOut(duration: 600.ms),
+                  ],
+                ),
+              )
+                  .animate()
+                  .fadeIn(delay: (i * 100).ms, duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0, delay: (i * 100).ms);
+            }),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StepItem extends StatelessWidget {
-  const _StepItem({
-    required this.label,
-    required this.isDone,
-    required this.isActive,
-    required this.colors,
-    required this.ts,
-  });
-
-  final String label;
-  final bool isDone;
-  final bool isActive;
-  final CiroColorScheme colors;
-  final CiroTextStyleSet ts;
-
-  @override
-  Widget build(BuildContext context) {
-    Color iconColor = colors.onSurface.withValues(alpha: 0.2);
-    Widget icon = Icon(Icons.circle_outlined, size: 20, color: iconColor);
-
-    if (isDone) {
-      iconColor = Colors.greenAccent[700]!;
-      icon = Icon(Icons.check_circle_rounded, size: 20, color: iconColor);
-    } else if (isActive) {
-      iconColor = colors.primary;
-      icon = const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, value: null),
-      )
-          .animate(onPlay: (c) => c.repeat())
-          .scale(
-            begin: const Offset(0.8, 0.8),
-            end: const Offset(1.1, 1.1),
-            duration: 800.ms,
-            curve: Curves.easeInOut,
-          )
-          .then()
-          .scale(
-            begin: const Offset(1.1, 1.1),
-            end: const Offset(0.8, 0.8),
-            duration: 800.ms,
-            curve: Curves.easeInOut,
-          );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          icon,
-          const SizedBox(width: 20),
-          Expanded(
-            child: Text(
-              label,
-              style: ts.body.copyWith(
-                color: isActive || isDone
-                    ? colors.onSurface
-                    : colors.onSurface.withValues(alpha: 0.3),
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-          if (isActive)
-            Text(
-              'ACTIVE',
-              style: ts.bodySmall.copyWith(
-                color: colors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat())
-                .fadeIn(duration: 500.ms)
-                .then()
-                .fadeOut(duration: 500.ms),
-        ],
       ),
     );
   }

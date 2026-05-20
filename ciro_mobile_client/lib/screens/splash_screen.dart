@@ -23,8 +23,6 @@ class SplashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ── Navigation trigger ───────────────────────────────────────────────
-    // ref.listen fires outside build — safe to call context.goNamed here.
     ref.listen<AsyncValue<void>>(splashTimerProvider, (_, next) {
       next.whenData((_) {
         if (context.mounted) {
@@ -34,41 +32,46 @@ class SplashScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: const Color(0xFF060B14),
       body: Stack(
         fit: StackFit.expand,
         children: [
           // ── Layer 1: cityscape background ─────────────────────────────
           const _SplashBackground(),
 
-          // ── Layer 2: dark gradient overlay ────────────────────────────
+          // ── Layer 2: premium gradient overlay ─────────────────────────
           const _DarkOverlay(),
 
-          // ── Layer 3: content column ───────────────────────────────────
+          // ── Layer 3: radial glow accent ───────────────────────────────
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0.0, -0.3),
+                  radius: 0.8,
+                  colors: [
+                    Color(0x1A4DA3FF),
+                    Color(0x00060B14),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Layer 4: content column ───────────────────────────────────
           SafeArea(
             child: Column(
               children: [
-                // Flexible top spacer — pushes logo+text to visual centre.
                 const Spacer(flex: 3),
-
-                // ── Shield logo ────────────────────────────────────────
                 const _ShieldLogo(),
-
-                const SizedBox(height: 28),
-
-                // ── "CIRO" wordmark ────────────────────────────────────
+                const SizedBox(height: 32),
                 const _CiroWordmark(),
-
-                const SizedBox(height: 10),
-
-                // ── Tagline ────────────────────────────────────────────
+                const SizedBox(height: 12),
                 const _Tagline(),
-
                 const Spacer(flex: 4),
-
-                // ── Footer ─────────────────────────────────────────────
+                const _LoadingBar(),
+                const SizedBox(height: 32),
                 const _PoweredByFooter(),
-
                 const SizedBox(height: 24),
               ],
             ),
@@ -81,10 +84,7 @@ class SplashScreen extends ConsumerWidget {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PRIVATE SUB-WIDGETS
-// Decomposed so each piece has a single animation responsibility.
 // ═══════════════════════════════════════════════════════════════════════════
-
-// ── Background image ────────────────────────────────────────────────────────
 
 class _SplashBackground extends StatelessWidget {
   const _SplashBackground();
@@ -94,14 +94,11 @@ class _SplashBackground extends StatelessWidget {
     return Image.asset(
       'assets/images/splash_bg.png',
       fit: BoxFit.cover,
-      // Semantic label — screen readers shouldn't announce decorative art.
       semanticLabel: '',
       excludeFromSemantics: true,
     );
   }
 }
-
-// ── Dark gradient overlay ───────────────────────────────────────────────────
 
 class _DarkOverlay extends StatelessWidget {
   const _DarkOverlay();
@@ -114,18 +111,16 @@ class _DarkOverlay extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFF0D1117).withValues(alpha: 0.55),
-            const Color(0xFF0D1117).withValues(alpha: 0.75),
-            const Color(0xFF0D1117).withValues(alpha: 0.92),
+            const Color(0xFF060B14).withAlpha(140),
+            const Color(0xFF060B14).withAlpha(200),
+            const Color(0xFF060B14).withAlpha(240),
           ],
-          stops: const [0.0, 0.55, 1.0],
+          stops: const [0.0, 0.5, 1.0],
         ),
       ),
     );
   }
 }
-
-// ── Shield logo ─────────────────────────────────────────────────────────────
 
 class _ShieldLogo extends StatelessWidget {
   const _ShieldLogo();
@@ -134,36 +129,27 @@ class _ShieldLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Image.asset(
       'assets/images/ciro_shield.png',
-      width: 100,
-      height: 100,
+      width: 110,
+      height: 110,
       fit: BoxFit.contain,
       semanticLabel: 'CIRO shield logo',
     )
-        // 1. Start invisible + 20% smaller
         .animate()
-        .fadeIn(
-          delay: 0.ms,
-          duration: 600.ms,
-          curve: Curves.easeOut,
-        )
+        .fadeIn(duration: 700.ms, curve: Curves.easeOut)
         .scale(
-          begin: const Offset(0.80, 0.80),
-          end: const Offset(1.00, 1.00),
-          delay: 0.ms,
-          duration: 600.ms,
+          begin: const Offset(0.75, 0.75),
+          end: const Offset(1.0, 1.0),
+          duration: 700.ms,
           curve: Curves.easeOut,
         )
-        // 2. Subtle breathing pulse after entrance (loops)
-        .then(delay: 200.ms)
+        .then(delay: 300.ms)
         .shimmer(
-          duration: 1800.ms,
-          color: const Color(0xFF2F81F7).withValues(alpha: 0.25),
+          duration: 2000.ms,
+          color: const Color(0xFF4DA3FF).withAlpha(50),
           angle: 0.0,
         );
   }
 }
-
-// ── "CIRO" wordmark ─────────────────────────────────────────────────────────
 
 class _CiroWordmark extends StatelessWidget {
   const _CiroWordmark();
@@ -176,7 +162,6 @@ class _CiroWordmark extends StatelessWidget {
       semanticsLabel: 'CIRO',
     )
         .animate()
-        // Slide up from 18px below + fade in
         .slideY(
           begin: 0.4,
           end: 0.0,
@@ -192,8 +177,6 @@ class _CiroWordmark extends StatelessWidget {
   }
 }
 
-// ── Tagline ─────────────────────────────────────────────────────────────────
-
 class _Tagline extends StatelessWidget {
   const _Tagline();
 
@@ -205,11 +188,7 @@ class _Tagline extends StatelessWidget {
       textAlign: TextAlign.center,
     )
         .animate()
-        .fadeIn(
-          delay: 700.ms,   // 400ms (CIRO) + 300ms after
-          duration: 450.ms,
-          curve: Curves.easeOut,
-        )
+        .fadeIn(delay: 700.ms, duration: 450.ms, curve: Curves.easeOut)
         .slideY(
           begin: 0.2,
           end: 0.0,
@@ -220,7 +199,30 @@ class _Tagline extends StatelessWidget {
   }
 }
 
-// ── Footer ──────────────────────────────────────────────────────────────────
+class _LoadingBar extends StatelessWidget {
+  const _LoadingBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 80),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: SizedBox(
+          height: 3,
+          child: LinearProgressIndicator(
+            backgroundColor: Colors.white.withAlpha(15),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              Color(0xFF4DA3FF),
+            ),
+          ),
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(delay: 1000.ms, duration: 400.ms);
+  }
+}
 
 class _PoweredByFooter extends StatelessWidget {
   const _PoweredByFooter();
@@ -233,10 +235,6 @@ class _PoweredByFooter extends StatelessWidget {
       textAlign: TextAlign.center,
     )
         .animate()
-        .fadeIn(
-          delay: 1100.ms,
-          duration: 600.ms,
-          curve: Curves.easeIn,
-        );
+        .fadeIn(delay: 1100.ms, duration: 600.ms, curve: Curves.easeIn);
   }
 }

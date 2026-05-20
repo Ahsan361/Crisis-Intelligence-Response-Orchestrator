@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_text_styles.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SEVERITY BADGE
 //
-// Compact pill that communicates crisis severity at a glance.
+// Compact premium pill that communicates crisis severity at a glance.
+// Glassmorphism-inspired with subtle glow matching severity color.
 //
 // Sizes:
 //   SeverityBadge(severity: 'critical')          → standard (card use)
 //   SeverityBadge.large(severity: 'critical')    → detail screen header
 //   SeverityBadge.dot(severity: 'critical')      → list indicator dot only
-//
-// Usage:
-//   SeverityBadge(severity: alert.severityKey)
-//   SeverityBadge(severity: 'high')
 // ═══════════════════════════════════════════════════════════════════════════
 
 enum _BadgeSize { standard, large, dot }
@@ -38,149 +34,74 @@ class SeverityBadge extends StatelessWidget {
     required this.severity,
   }) : _size = _BadgeSize.dot;
 
-  /// Lowercase severity string: 'critical' | 'high' | 'medium' | 'low' | 'unknown'.
   final String severity;
   final _BadgeSize _size;
 
-  // ── Derived values ─────────────────────────────────────────────────────
-
-  Color get _color => CiroColors.forSeverity(severity);
-
-  String get _label => _BadgeLabel.from(severity);
-
-  // ── Build ──────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Severity: $_label',
-      child: switch (_size) {
-        _BadgeSize.standard => _StandardBadge(
-            label: _label,
-            color: _color,
-          ),
-        _BadgeSize.large => _LargeBadge(
-            label: _label,
-            color: _color,
-          ),
-        _BadgeSize.dot => _DotBadge(color: _color),
-      },
-    );
-  }
-}
+    final color = CiroColors.forSeverity(severity);
+    final label = _formatLabel(severity);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STANDARD BADGE — used on CrisisCard
-// ═══════════════════════════════════════════════════════════════════════════
+    // Dot-only variant
+    if (_size == _BadgeSize.dot) {
+      return Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color.withAlpha(100),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+      );
+    }
 
-class _StandardBadge extends StatelessWidget {
-  const _StandardBadge({required this.label, required this.color});
+    final isLarge = _size == _BadgeSize.large;
+    final horizontalPad = isLarge ? 14.0 : 10.0;
+    final verticalPad = isLarge ? 6.0 : 4.0;
+    final fontSize = isLarge ? 11.0 : 10.0;
 
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPad,
+        vertical: verticalPad,
+      ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.40), width: 1),
+        // Glass-like tinted background
+        color: color.withAlpha(25),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withAlpha(50),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withAlpha(30),
+            blurRadius: 8,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Text(
         label,
-        style: CiroTextStyles.severityBadge.copyWith(color: color),
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 1.0,
+          height: 1.0,
+        ),
       ),
     );
   }
-}
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LARGE BADGE — used on detail screen header / report summary
-// ═══════════════════════════════════════════════════════════════════════════
-
-class _LargeBadge extends StatelessWidget {
-  const _LargeBadge({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Filled dot
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: color,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DOT BADGE — compact indicator dot for dense lists
-// ═══════════════════════════════════════════════════════════════════════════
-
-class _DotBadge extends StatelessWidget {
-  const _DotBadge({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.50),
-            blurRadius: 4,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BADGE LABEL HELPER
-// Maps severity key → uppercase display string.
-// Kept here so the badge is self-contained with no model import.
-// ═══════════════════════════════════════════════════════════════════════════
-
-abstract final class _BadgeLabel {
-  static String from(String severity) {
+  String _formatLabel(String severity) {
     switch (severity.toLowerCase()) {
       case 'critical':
         return 'CRITICAL';

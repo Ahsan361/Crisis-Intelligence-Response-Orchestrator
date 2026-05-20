@@ -5,42 +5,33 @@ import 'app_colors.dart';
 
 /// Named, pre-built [TextStyle] constants for the CIRO design system.
 ///
+/// Premium SF Pro / Inter-inspired typography hierarchy for command-center UI.
+///
 /// Every style is context-aware via the [of] factory — it resolves the
-/// correct colour from the active theme's brightness:
+/// correct colour from the active theme's brightness.
 ///
-/// ```dart
-/// Text('CIRO', style: CiroTextStyles.of(context).display)
-/// ```
-///
-/// Static constants (theme-independent) are also available when you need
-/// a fixed colour (e.g., inside a coloured container):
-///
-/// ```dart
-/// Text('Critical', style: CiroTextStyles.displayOnDark)
-/// ```
-///
-/// Typography scale (from design spec):
-/// ┌─────────────┬────────┬────────┬─────────────────────┐
-/// │ Role        │ Size   │ Weight │ Usage                │
-/// ├─────────────┼────────┼────────┼─────────────────────┤
-/// │ display     │ 32 sp  │ 700    │ Hero numbers, splash │
-/// │ headline    │ 24 sp  │ 600    │ Section titles       │
-/// │ title       │ 18 sp  │ 600    │ Card headers, AppBar │
-/// │ titleMedium │ 16 sp  │ 500    │ Sub-headers          │
-/// │ body        │ 14 sp  │ 400    │ General content      │
-/// │ bodyLarge   │ 16 sp  │ 400    │ Report text, dialogs │
-/// │ bodySmall   │ 13 sp  │ 400    │ Supporting text      │
-/// │ label       │ 12 sp  │ 500    │ Badges, timestamps   │
-/// │ labelTiny   │ 11 sp  │ 500    │ Status chips, meta   │
-/// │ caption     │ 12 sp  │ 400    │ Captions, footers    │
-/// │ mono        │ 13 sp  │ 500    │ Codes, IDs, coords   │
-/// └─────────────┴────────┴────────┴─────────────────────┘
+/// Typography scale:
+/// ┌──────────────┬────────┬────────┬───────────────┬─────────────────────┐
+/// │ Role         │ Size   │ Weight │ Tracking      │ Usage                │
+/// ├──────────────┼────────┼────────┼───────────────┼─────────────────────┤
+/// │ displayLarge │ 36 sp  │ 700    │ -0.5          │ Hero numbers, splash │
+/// │ display      │ 32 sp  │ 700    │ -0.5          │ Alert counts, stats  │
+/// │ headline     │ 28 sp  │ 600    │ -0.3          │ Section titles       │
+/// │ title        │ 20 sp  │ 600    │ -0.2          │ Card headers         │
+/// │ titleMedium  │ 16 sp  │ 500    │ 0.1           │ Sub-headers          │
+/// │ body         │ 15 sp  │ 400    │ 0             │ General content      │
+/// │ bodyLarge    │ 16 sp  │ 400    │ 0             │ Report text, dialogs │
+/// │ bodySmall    │ 13 sp  │ 400    │ 0             │ Supporting text      │
+/// │ label        │ 12 sp  │ 500    │ 1.2 uppercase │ Badges, timestamps   │
+/// │ labelTiny    │ 11 sp  │ 500    │ 0.5           │ Status chips, meta   │
+/// │ caption      │ 11 sp  │ 400    │ 0.3           │ Captions, footers    │
+/// │ mono         │ 13 sp  │ 500    │ 0.5           │ Codes, IDs, coords   │
+/// └──────────────┴────────┴────────┴───────────────┴─────────────────────┘
 abstract final class CiroTextStyles {
   CiroTextStyles._();
 
   // ═══════════════════════════════════════════════════════════════════════
   // CONTEXT-AWARE FACTORY
-  // Returns a [_CiroTextStyleSet] resolved for the current theme brightness.
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Returns the full style set resolved against the current [BuildContext]
@@ -56,6 +47,15 @@ abstract final class CiroTextStyles {
   // (e.g., splash screen, report button gradient card).
   // ═══════════════════════════════════════════════════════════════════════
 
+  /// 36 sp / w700 — hero display on dark background.
+  static final TextStyle displayLargeOnDark = GoogleFonts.inter(
+    fontSize: 36,
+    fontWeight: FontWeight.w700,
+    color: CiroColors.dark.onBackground,
+    letterSpacing: -0.5,
+    height: 1.15,
+  );
+
   /// 32 sp / w700 — for splash screen hero text and large numeric displays.
   static final TextStyle displayOnDark = GoogleFonts.inter(
     fontSize: 32,
@@ -65,25 +65,27 @@ abstract final class CiroTextStyles {
     height: 1.2,
   );
 
-  /// 24 sp / w600 — section titles on a dark background.
+  /// 28 sp / w600 — section titles on a dark background.
   static final TextStyle headlineOnDark = GoogleFonts.inter(
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: FontWeight.w600,
     color: CiroColors.dark.onBackground,
+    letterSpacing: -0.3,
+    height: 1.25,
+  );
+
+  /// 20 sp / w600 — card headers on dark.
+  static final TextStyle titleOnDark = GoogleFonts.inter(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: CiroColors.dark.onBackground,
+    letterSpacing: -0.2,
     height: 1.3,
   );
 
-  /// 18 sp / w600 — card headers and AppBar titles on dark.
-  static final TextStyle titleOnDark = GoogleFonts.inter(
-    fontSize: 18,
-    fontWeight: FontWeight.w600,
-    color: CiroColors.dark.onBackground,
-    height: 1.35,
-  );
-
-  /// 14 sp / w400 — body text on dark background.
+  /// 15 sp / w400 — body text on dark background.
   static final TextStyle bodyOnDark = GoogleFonts.inter(
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: FontWeight.w400,
     color: CiroColors.dark.onBackground,
     height: 1.5,
@@ -97,31 +99,31 @@ abstract final class CiroTextStyles {
     height: 1.5,
   );
 
-  /// 12 sp / w500 — badges, labels, timestamps on dark.
+  /// 12 sp / w500 — badges, labels, timestamps on dark (uppercase).
   static final TextStyle labelOnDark = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: CiroColors.dark.onSurface,
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
   );
 
   // ── Splash-specific styles (white only, never theme-switched) ──────────
 
-  /// "CIRO" splash title — 36 sp / w700 / pure white.
+  /// "CIRO" splash title — 40 sp / w700 / pure white.
   static final TextStyle splashTitle = GoogleFonts.inter(
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: FontWeight.w700,
     color: Colors.white,
-    letterSpacing: 1.5,
+    letterSpacing: 3.0,
     height: 1.1,
   );
 
-  /// Splash subtitle line — 13 sp / w400 / subtle white.
+  /// Splash subtitle line — 14 sp / w400 / subtle white.
   static final TextStyle splashSubtitle = GoogleFonts.inter(
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: Colors.white.withValues(alpha: 0.70),
-    letterSpacing: 0.2,
+    color: Colors.white.withAlpha(178),
+    letterSpacing: 0.5,
     height: 1.5,
   );
 
@@ -129,17 +131,18 @@ abstract final class CiroTextStyles {
   static final TextStyle splashFooter = GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w400,
-    color: Colors.white.withValues(alpha: 0.40),
+    color: Colors.white.withAlpha(102),
     letterSpacing: 0.3,
   );
 
-  // ── Report button card (sits on primary-blue gradient) ─────────────────
+  // ── Report button card (sits on gradient) ─────────────────────────────
 
   /// Hero report button main label — 20 sp / w600 / white.
   static final TextStyle reportButtonLabel = GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: Colors.white,
+    letterSpacing: -0.2,
     height: 1.3,
   );
 
@@ -147,24 +150,24 @@ abstract final class CiroTextStyles {
   static final TextStyle reportButtonSubtitle = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w400,
-    color: Colors.white.withValues(alpha: 0.75),
+    color: Colors.white.withAlpha(191),
     height: 1.5,
   );
 
   // ── Severity badge text (always on a tinted background) ───────────────
 
-  /// Severity badge label — 11 sp / w600 / white — tight tracking.
+  /// Severity badge label — 10 sp / w700 / white — tight tracking.
   static final TextStyle severityBadge = GoogleFonts.inter(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
-    letterSpacing: 0.8,
+    letterSpacing: 1.0,
     height: 1.0,
   );
 
   // ── Monospaced (report IDs, coordinates, timestamps) ──────────────────
 
-  /// 13 sp / w500 / JetBrains Mono fallback — report codes, lat/lng, IDs.
+  /// 13 sp / w500 / JetBrains Mono — report codes, lat/lng, IDs.
   static final TextStyle mono = GoogleFonts.jetBrainsMono(
     fontSize: 13,
     fontWeight: FontWeight.w500,
@@ -182,7 +185,7 @@ abstract final class CiroTextStyles {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PRIVATE RESOLVED STYLE SET
+// RESOLVED STYLE SET
 // Instantiated by CiroTextStyles.of(context) with live colour tokens.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -191,8 +194,18 @@ final class CiroTextStyleSet {
 
   final CiroColorScheme colors;
 
+  // ── Display Large — 36 sp / w700 ───────────────────────────────────────
+  /// Largest display — hero numbers, big stats.
+  TextStyle get displayLarge => GoogleFonts.inter(
+        fontSize: 36,
+        fontWeight: FontWeight.w700,
+        color: colors.onBackground,
+        letterSpacing: -0.5,
+        height: 1.15,
+      );
+
   // ── Display — 32 sp / w700 ─────────────────────────────────────────────
-  /// Large hero text — splash numbers, alert counts.
+  /// Large hero text — alert counts, splash numbers.
   TextStyle get display => GoogleFonts.inter(
         fontSize: 32,
         fontWeight: FontWeight.w700,
@@ -201,22 +214,24 @@ final class CiroTextStyleSet {
         height: 1.2,
       );
 
-  // ── Headline — 24 sp / w600 ────────────────────────────────────────────
+  // ── Headline — 28 sp / w600 ────────────────────────────────────────────
   /// Screen-level section title (e.g. "Recent Alerts").
   TextStyle get headline => GoogleFonts.inter(
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: FontWeight.w600,
         color: colors.onBackground,
-        height: 1.3,
+        letterSpacing: -0.3,
+        height: 1.25,
       );
 
-  // ── Title — 18 sp / w600 ──────────────────────────────────────────────
+  // ── Title — 20 sp / w600 ──────────────────────────────────────────────
   /// Card title, AppBar heading.
   TextStyle get title => GoogleFonts.inter(
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w600,
         color: colors.onBackground,
-        height: 1.35,
+        letterSpacing: -0.2,
+        height: 1.3,
       );
 
   // ── Title Medium — 16 sp / w500 ────────────────────────────────────────
@@ -238,10 +253,10 @@ final class CiroTextStyleSet {
         height: 1.55,
       );
 
-  // ── Body — 14 sp / w400 ───────────────────────────────────────────────
+  // ── Body — 15 sp / w400 ───────────────────────────────────────────────
   /// General content, list items, form values.
   TextStyle get body => GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w400,
         color: colors.onBackground,
         height: 1.5,
@@ -256,13 +271,13 @@ final class CiroTextStyleSet {
         height: 1.5,
       );
 
-  // ── Label — 12 sp / w500 ──────────────────────────────────────────────
+  // ── Label — 12 sp / w500 / uppercase ──────────────────────────────────
   /// Timestamps, area names, metadata chips.
   TextStyle get label => GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: colors.onSurface,
-        letterSpacing: 0.5,
+        letterSpacing: 1.2,
       );
 
   // ── Label Tiny — 11 sp / w500 ─────────────────────────────────────────
@@ -274,12 +289,13 @@ final class CiroTextStyleSet {
         letterSpacing: 0.5,
       );
 
-  // ── Caption — 12 sp / w400 ────────────────────────────────────────────
+  // ── Caption — 11 sp / w400 ────────────────────────────────────────────
   /// Footers, image captions, hint text.
   TextStyle get caption => GoogleFonts.inter(
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: FontWeight.w400,
         color: colors.onSurface,
+        letterSpacing: 0.3,
         height: 1.5,
       );
 

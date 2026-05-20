@@ -8,6 +8,7 @@ import '../models/crisis_alert.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_theme.dart';
 import '../widgets/status_banner.dart';
 import '../widgets/crisis_card.dart';
 import '../router/app_router.dart';
@@ -26,16 +27,18 @@ class LandingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeTab = ref.watch(activeTabProvider);
     final colors = CiroColors.of(context);
+    final showShellChrome = activeTab == 0;
 
     return Scaffold(
-      appBar: _CiroAppBar(colors: colors),
+      extendBody: false,
+      appBar: showShellChrome ? _CiroAppBar(colors: colors) : null,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0.05, 0),
+              begin: const Offset(0.03, 0),
               end: Offset.zero,
             ).animate(CurvedAnimation(
               parent: animation,
@@ -64,7 +67,7 @@ class LandingPage extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// APP BAR
+// APP BAR — Transparent glass-style
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _CiroAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -80,18 +83,40 @@ class _CiroAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AppBar(
+      backgroundColor: colors.background,
+      elevation: 0,
       leading: Padding(
-        padding: const EdgeInsets.only(left: 12),
+        padding: const EdgeInsets.only(left: 16),
         child: Image.asset(
           'assets/images/ciro_shield.png',
-          width: 24,
-          height: 24,
+          width: 28,
+          height: 28,
           fit: BoxFit.contain,
           semanticLabel: 'CIRO shield',
         ),
       ),
-      leadingWidth: 48,
-      title: Text('CIRO', style: CiroTextStyles.of(context).title),
+      leadingWidth: 52,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CIRO',
+            style: CiroTextStyles.of(context).title.copyWith(
+                  letterSpacing: 1.5,
+                  fontSize: 18,
+                ),
+          ),
+          Text(
+            'COMMAND CENTER',
+            style: CiroTextStyles.of(context).caption.copyWith(
+                  fontSize: 9,
+                  letterSpacing: 2.0,
+                  color: CiroColors.aiAccent.withAlpha(180),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
       actions: [
         Semantics(
           label: isDark ? 'Switch to light theme' : 'Switch to dark theme',
@@ -100,7 +125,7 @@ class _CiroAppBar extends ConsumerWidget implements PreferredSizeWidget {
             icon: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               color: colors.onSurface,
-              size: 22,
+              size: 20,
             ),
             tooltip: isDark ? 'Light theme' : 'Dark theme',
             onPressed: () {
@@ -108,13 +133,9 @@ class _CiroAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     isDark ? ThemeMode.light : ThemeMode.dark,
                   );
             },
-            style: IconButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              tapTargetSize: MaterialTapTargetSize.padded,
-            ),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -152,14 +173,12 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Refresh data when app returns from background
     if (state == AppLifecycleState.resumed) {
       _performRefresh();
     }
   }
 
   void _startPolling() {
-    // Poll every 15 seconds per requirements
     _pollingTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _performRefresh(),
@@ -168,11 +187,7 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody>
 
   Future<void> _performRefresh() async {
     if (!mounted) return;
-
-    // Trigger the refresh on the notifier
-    // AlertsNotifier.refresh() handles the silent background fetch
     await ref.read(allAlertsProvider.notifier).refresh();
-
     if (mounted) {
       setState(() => _lastRefreshed = DateTime.now());
     }
@@ -183,27 +198,80 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody>
     final alertsAsync = ref.watch(recentAlertsProvider);
     final status = ref.watch(systemStatusProvider);
     final colors = CiroColors.of(context);
+    final activeCount = ref.watch(activeAlertCountProvider);
+    final criticalCount = ref.watch(criticalAlertCountProvider);
 
     return RefreshIndicator(
       onRefresh: _performRefresh,
       color: colors.primary,
       backgroundColor: colors.surface,
       displacement: 20,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Stack(
         children: [
-          StatusBanner(status: status)
-              .animate()
-              .fadeIn(delay: 50.ms, duration: 350.ms),
-          const SizedBox(height: 20),
-          const _ReportButtonCard(),
-          const SizedBox(height: 28),
-          _RecentAlertsSection(
-            alertsAsync: alertsAsync,
-            lastRefreshed: _lastRefreshed,
+          // ── Background radial glow ──────────────────────────────────
+          Positioned(
+            top: -80,
+            left: 0,
+            right: 0,
+            height: 300,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: CiroColors.headerGlow,
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
+
+          // ── Content ─────────────────────────────────────────────────
+          ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+            children: [
+              StatusBanner(status: status)
+                  .animate()
+                  .fadeIn(delay: 50.ms, duration: 350.ms),
+              const SizedBox(height: 20),
+
+              // ── Stats row ───────────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      label: 'ACTIVE',
+                      value: '$activeCount',
+                      icon: Icons.warning_rounded,
+                      color: CiroColors.severityHigh,
+                      colors: colors,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatCard(
+                      label: 'CRITICAL',
+                      value: '$criticalCount',
+                      icon: Icons.crisis_alert_rounded,
+                      color: CiroColors.severityCritical,
+                      colors: colors,
+                    ),
+                  ),
+                ],
+              )
+                  .animate()
+                  .fadeIn(delay: 100.ms, duration: 350.ms)
+                  .slideY(begin: 0.05, end: 0, delay: 100.ms, duration: 350.ms),
+              const SizedBox(height: 24),
+
+              // ── Emergency button ────────────────────────────────────
+              const _ReportButtonCard(),
+              const SizedBox(height: 32),
+
+              // ── Recent alerts ───────────────────────────────────────
+              _RecentAlertsSection(
+                alertsAsync: alertsAsync,
+                lastRefreshed: _lastRefreshed,
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ],
       ),
     );
@@ -211,7 +279,70 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HERO REPORT BUTTON CARD
+// STAT CARD — Compact metric display
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.colors,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final CiroColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final ts = CiroTextStyles.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceVariant,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: CiroColors.glassBorder),
+        gradient: CiroColors.cardGradient,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withAlpha(15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: ts.display.copyWith(fontSize: 22, color: color),
+              ),
+              Text(
+                label,
+                style: ts.caption.copyWith(
+                  letterSpacing: 1.0,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HERO REPORT BUTTON — Premium floating emergency panel
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _ReportButtonCard extends StatefulWidget {
@@ -224,19 +355,20 @@ class _ReportButtonCard extends StatefulWidget {
 class _ReportButtonCardState extends State<_ReportButtonCard> {
   bool _isPressed = false;
 
-  void _onTapDown(TapDownDetails _) => setState(() => _isPressed = true);
-  void _onTapUp(TapUpDetails _) => setState(() => _isPressed = false);
-  void _onTapCancel() => setState(() => _isPressed = false);
-
   @override
   Widget build(BuildContext context) {
+    final colors = CiroColors.of(context);
+    final borderColor = Theme.of(context).brightness == Brightness.dark
+        ? CiroColors.glassBorder
+        : colors.onSurface.withAlpha(28);
+
     return Semantics(
       label: 'Report a crisis. Tap to submit an emergency report.',
       button: true,
       child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
         onTap: () async {
           await Future.delayed(const Duration(milliseconds: 50));
           if (context.mounted) context.pushNamed(CiroRoutes.reportName);
@@ -245,139 +377,102 @@ class _ReportButtonCardState extends State<_ReportButtonCard> {
           scale: _isPressed ? 0.97 : 1.0,
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
-          child: _ReportButtonContent(),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+            decoration: BoxDecoration(
+              color: colors.surfaceVariant,
+              borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+              border: Border.all(color: borderColor),
+              gradient: CiroColors.cardGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: CiroColors.severityCritical.withAlpha(20),
+                  blurRadius: 30,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Emergency beacon ─────────────────────────────────
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 112,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        color: CiroColors.severityCritical.withAlpha(8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: CiroColors.severityCritical.withAlpha(15),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        gradient: CiroColors.emergencyGradient,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: CiroColors.severityCritical.withAlpha(80),
+                            blurRadius: 24,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.campaign_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ],
+                ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
+                      begin: const Offset(0.97, 0.97),
+                      end: const Offset(1.03, 1.03),
+                      duration: 1800.ms,
+                      curve: Curves.easeInOut,
+                    ),
+
+                const SizedBox(height: 14),
+
+                Text(
+                  'Report Emergency',
+                  style: CiroTextStyles.of(context).title.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap to submit a crisis report for AI analysis',
+                  style: CiroTextStyles.of(context).bodySmall.copyWith(
+                        color: colors.onSurface.withAlpha(150),
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     )
         .animate()
         .fadeIn(delay: 150.ms, duration: 400.ms, curve: Curves.easeOut)
-        .slideY(
-          begin: 0.08,
-          end: 0.0,
-          delay: 150.ms,
-          duration: 400.ms,
-          curve: Curves.easeOut,
-        );
-  }
-}
-
-class _ReportButtonContent extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = CiroColors.of(context);
-    
-    // Coral red color from user screenshot
-    const coralRed = Color(0xFFFF4D5A);
-    final ring1Color = coralRed.withValues(alpha: isDark ? 0.12 : 0.15);
-    final ring2Color = coralRed.withValues(alpha: isDark ? 0.05 : 0.07);
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colors.divider.withValues(alpha: isDark ? 0.15 : 0.5),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-            blurRadius: 20,
-            spreadRadius: 0,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // ── Concentric Pulsing Emergency Beacon ─────────────────────
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Outer Ripple Ring 2 (Largest)
-              Container(
-                width: 170,
-                height: 170,
-                decoration: BoxDecoration(
-                  color: ring2Color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              // Outer Ripple Ring 1 (Middle)
-              Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: ring1Color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              // Main Circular Button (Center)
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: coralRed,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: coralRed.withValues(alpha: isDark ? 0.5 : 0.35),
-                      blurRadius: 24,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.campaign_rounded, // Premium emergency beacon megaphone icon
-                  color: Colors.white,
-                  size: 52,
-                ),
-              ),
-            ],
-          )
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .scale(
-            begin: const Offset(0.97, 0.97),
-            end: const Offset(1.03, 1.03),
-            duration: 1500.ms,
-            curve: Curves.easeInOut,
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // ── Text Labels ────────────────────────────────────────────
-          Text(
-            'Tap in case of emergency',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFFF0F6FC) : const Color(0xFF1F2328),
-              letterSpacing: -0.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          
-          const SizedBox(height: 6),
-          
-          Text(
-            'Tap to submit an emergency report',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: colors.onSurface.withValues(alpha: 0.8),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+        .slideY(begin: 0.06, end: 0, delay: 150.ms, duration: 400.ms);
   }
 }
 
@@ -400,7 +495,6 @@ class _RecentAlertsSection extends ConsumerStatefulWidget {
 }
 
 class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
-  /// Track if we've already performed the entrance animation.
   bool _hasAnimated = false;
 
   @override
@@ -408,7 +502,6 @@ class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
     final ts = CiroTextStyles.of(context);
     final colors = CiroColors.of(context);
 
-    // Compute "last updated" string
     final now = DateTime.now();
     final diff = now.difference(widget.lastRefreshed);
     final String timeStr =
@@ -419,54 +512,67 @@ class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Recent Alerts', style: ts.headline),
-                const SizedBox(height: 2),
+                Text('Recent Alerts',
+                    style: ts.headline.copyWith(fontSize: 22)),
+                const SizedBox(height: 4),
                 Text(
-                  'Last updated: $timeStr',
-                  style: ts.bodySmall.copyWith(
-                    color: colors.onSurface.withValues(alpha: 0.4),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                  'Updated $timeStr',
+                  style: ts.caption.copyWith(
+                    color: colors.onSurface.withAlpha(100),
                   ),
                 ),
               ],
             ),
-            TextButton(
-              onPressed: () {
-                context.pushNamed('allAlerts');
-              },
-              style: TextButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: colors.primary.withAlpha(15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.primary.withAlpha(30)),
               ),
-              child: Text('View All', style: ts.link),
+              child: TextButton(
+                onPressed: () => context.pushNamed('allAlerts'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 36),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                ),
+                child: Text(
+                  'View All',
+                  style: ts.linkSmall.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
             ),
           ],
         ).animate().fadeIn(delay: 250.ms, duration: 350.ms),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         widget.alertsAsync.when(
-          // Background refreshes are silent — skip loading callback if data exists.
           skipLoadingOnRefresh: true,
           data: (alerts) {
             if (alerts.isEmpty) {
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
+                padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: Text(
-                    'No active alerts detected.',
-                    style: ts.bodySmall.copyWith(color: colors.onSurface),
+                  child: Column(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded,
+                          size: 48,
+                          color: CiroColors.severityLow.withAlpha(100)),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No active alerts detected',
+                        style: ts.bodySmall.copyWith(color: colors.onSurface),
+                      ),
+                    ],
                   ),
                 ),
               );
             }
 
-            // Flag that entrance animation should happen only once
             final bool shouldAnimate = !_hasAnimated;
             if (shouldAnimate) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -495,10 +601,10 @@ class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
                 );
 
                 if (shouldAnimate) {
-                  final delay = Duration(milliseconds: 300 + (i * 150));
+                  final delay = Duration(milliseconds: 300 + (i * 120));
                   return Padding(
                     padding: EdgeInsets.only(
-                      bottom: i < alerts.length - 1 ? 10 : 0,
+                      bottom: i < alerts.length - 1 ? 12 : 0,
                     ),
                     child: card
                         .animate()
@@ -506,7 +612,7 @@ class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
                             delay: delay,
                             duration: 400.ms,
                             curve: Curves.easeOut)
-                        .slideX(
+                        .slideY(
                           begin: 0.06,
                           end: 0.0,
                           delay: delay,
@@ -516,10 +622,9 @@ class _RecentAlertsSectionState extends ConsumerState<_RecentAlertsSection> {
                   );
                 }
 
-                // Subsequent refreshes: no entrance animation
                 return Padding(
                   padding: EdgeInsets.only(
-                    bottom: i < alerts.length - 1 ? 10 : 0,
+                    bottom: i < alerts.length - 1 ? 12 : 0,
                   ),
                   child: card,
                 );
@@ -550,22 +655,22 @@ class _SkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = CiroColors.of(context);
-    final delay = Duration(milliseconds: 300 + (index * 150));
+    final delay = Duration(milliseconds: 300 + (index * 120));
 
     return Container(
       width: double.infinity,
       height: 110,
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: colors.surfaceVariant.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.divider.withValues(alpha: 0.5)),
+        color: colors.surfaceVariant.withAlpha(100),
+        borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+        border: Border.all(color: CiroColors.glassBorder),
       ),
     )
         .animate(onPlay: (c) => c.repeat())
         .shimmer(
-          duration: 1200.ms,
-          color: colors.surface.withValues(alpha: 0.3),
+          duration: 1500.ms,
+          color: colors.surface.withAlpha(60),
         )
         .animate()
         .fadeIn(delay: delay, duration: 400.ms);
@@ -573,7 +678,7 @@ class _SkeletonCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ERROR STATE WIDGET
+// ERROR STATE
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _ErrorState extends StatelessWidget {
@@ -587,54 +692,52 @@ class _ErrorState extends StatelessWidget {
     final colors = CiroColors.of(context);
 
     final errStr = error.toString().toLowerCase();
-    final isNetwork = errStr.contains('socketexception') || errStr.contains('network');
-    final title = isNetwork ? 'No Internet Connection' : 'Server Unavailable';
-    final subtitle = isNetwork ? 'Check your connection and try again.' : 'CIRO backend is unreachable. Make sure the server is running.';
+    final isNetwork =
+        errStr.contains('socketexception') || errStr.contains('network');
+    final title = isNetwork ? 'No Connection' : 'Server Unavailable';
+    final subtitle = isNetwork
+        ? 'Check your connection and try again.'
+        : 'CIRO backend is unreachable.';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: colors.error.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.error.withValues(alpha: 0.15)),
+        color: colors.error.withAlpha(8),
+        borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+        border: Border.all(color: colors.error.withAlpha(25)),
       ),
       child: Column(
         children: [
-          Icon(Icons.cloud_off_rounded, color: colors.error, size: 32),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: ts.titleMedium.copyWith(color: colors.error),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: ts.bodySmall.copyWith(color: colors.onSurface),
-            textAlign: TextAlign.center,
-          ),
+          Icon(Icons.cloud_off_rounded,
+              color: colors.error.withAlpha(150), size: 36),
           const SizedBox(height: 16),
+          Text(title,
+              style: ts.title.copyWith(color: colors.error, fontSize: 18)),
+          const SizedBox(height: 6),
+          Text(subtitle, style: ts.bodySmall, textAlign: TextAlign.center),
+          const SizedBox(height: 20),
           TextButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            label: const Text('Retry Connection'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Retry'),
             style: TextButton.styleFrom(
               foregroundColor: colors.primary,
-              backgroundColor: colors.primary.withValues(alpha: 0.1),
+              backgroundColor: colors.primary.withAlpha(15),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
               ),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn().shake(hz: 4, offset: const Offset(4, 0));
+    ).animate().fadeIn().shake(hz: 4, offset: const Offset(3, 0));
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BOTTOM NAVIGATION BAR
+// FLOATING DOCK BOTTOM NAVIGATION
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _CiroBottomNav extends StatelessWidget {
@@ -649,10 +752,18 @@ class _CiroBottomNav extends StatelessWidget {
   final CiroColorScheme colors;
 
   static const _items = [
-    (icon: Icons.home_rounded, label: 'Home'),
-    (icon: Icons.add_alert_rounded, label: 'Report'),
-    (icon: Icons.map_rounded, label: 'Map'),
-    (icon: Icons.timeline_rounded, label: 'Trace'),
+    (icon: Icons.home_rounded, activeIcon: Icons.home_rounded, label: 'Home'),
+    (
+      icon: Icons.add_alert_rounded,
+      activeIcon: Icons.add_alert_rounded,
+      label: 'Report'
+    ),
+    (icon: Icons.map_rounded, activeIcon: Icons.map_rounded, label: 'Map'),
+    (
+      icon: Icons.timeline_rounded,
+      activeIcon: Icons.timeline_rounded,
+      label: 'Trace'
+    ),
   ];
 
   @override
@@ -660,14 +771,21 @@ class _CiroBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.divider, width: 1)),
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? CiroColors.glassBorder
+                : colors.onSurface.withAlpha(28),
+            width: 1,
+          ),
+        ),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
           height: 64,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: List.generate(_items.length, (i) {
               return _NavItem(
                 icon: _items[i].icon,
@@ -709,20 +827,28 @@ class _NavItem extends StatelessWidget {
       selected: isActive,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: SizedBox(
-          width: 72,
-          height: 64,
+          width: 68,
+          height: 68,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
+              // ── Icon with glow for active state ─────────────────
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? colors.primary.withAlpha(20)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(
                   icon,
-                  key: ValueKey(isActive),
                   color: color,
-                  size: 24,
+                  size: 22,
                 ),
               ),
               const SizedBox(height: 4),
@@ -730,9 +856,10 @@ class _NavItem extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   color: color,
+                  letterSpacing: 0.3,
                 ),
                 child: Text(label),
               ),
@@ -743,4 +870,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-

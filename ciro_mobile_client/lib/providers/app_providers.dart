@@ -68,7 +68,6 @@ class AlertsNotifier extends AsyncNotifier<List<CrisisAlert>> {
     if (result.hasValue) {
       _isFirstLoad = false;
     }
-    
     state = result;
   }
 
@@ -81,7 +80,8 @@ class AlertsNotifier extends AsyncNotifier<List<CrisisAlert>> {
 }
 
 /// The main provider for all alerts in the system.
-final allAlertsProvider = AsyncNotifierProvider<AlertsNotifier, List<CrisisAlert>>(
+final allAlertsProvider =
+    AsyncNotifierProvider<AlertsNotifier, List<CrisisAlert>>(
   AlertsNotifier.new,
 );
 
@@ -91,7 +91,8 @@ final recentAlertsProvider = Provider<AsyncValue<List<CrisisAlert>>>((ref) {
 });
 
 /// Fetches a single alert by ID from the current async state.
-final alertByIdProvider = Provider.family<AsyncValue<CrisisAlert?>, String>((ref, id) {
+final alertByIdProvider =
+    Provider.family<AsyncValue<CrisisAlert?>, String>((ref, id) {
   return ref.watch(allAlertsProvider).whenData((list) {
     try {
       return list.firstWhere((a) => a.id == id);
@@ -148,7 +149,6 @@ final analyzeAlertProvider =
 /// Current CIRO system operational status — derived from async alert state.
 final systemStatusProvider = Provider<SystemStatus>((ref) {
   final alertsAsync = ref.watch(allAlertsProvider);
-  
   return alertsAsync.maybeWhen(
     data: (alerts) {
       final activeSeverities = alerts
@@ -164,7 +164,8 @@ final systemStatusProvider = Provider<SystemStatus>((ref) {
 final activeAlertCountProvider = Provider<int>((ref) {
   final alertsAsync = ref.watch(allAlertsProvider);
   return alertsAsync.maybeWhen(
-    data: (alerts) => alerts.where((a) => a.status != ReportStatus.resolved).length,
+    data: (alerts) =>
+        alerts.where((a) => a.status != ReportStatus.resolved).length,
     orElse: () => 0,
   );
 });
@@ -189,7 +190,7 @@ final criticalAlertCountProvider = Provider<int>((ref) {
 /// FIX 2: Migrated themeModeProvider from StateProvider to Notifier.
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
-  ThemeMode build() => ThemeMode.dark;
+  ThemeMode build() => ThemeMode.system;
 
   void setTheme(ThemeMode mode) => state = mode;
 }

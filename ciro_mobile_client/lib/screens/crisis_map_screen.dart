@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,9 @@ import '../models/crisis_alert.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_theme.dart';
 import '../widgets/severity_badge.dart';
+import '../widgets/glow_button.dart';
 
 class CrisisMapScreen extends ConsumerStatefulWidget {
   final CrisisAlert alert;
@@ -46,7 +49,6 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
     try {
       final routingService = ref.read(routingServiceProvider);
 
-      // Call ORS directions API for direct (blocked) route
       final blocked = await routingService.getRoute(
         startLat: startLat,
         startLng: startLng,
@@ -54,8 +56,6 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
         endLng: destLng,
       );
 
-      // Call ORS directions API for detour (alternate) route
-      // Use slightly offset start to force a visually distinct detour route
       final alternate = await routingService.getRoute(
         startLat: startLat + 0.0015,
         startLng: startLng + 0.0015,
@@ -124,11 +124,9 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
     final colors = CiroColors.of(context);
     final ts = CiroTextStyles.of(context);
 
-    // Coordinate defaults
     final startLat = widget.alert.locationLat ?? 33.6844;
     final startLng = widget.alert.locationLng ?? 73.0479;
 
-    // Simulation mapping details
     final sim = widget.alert.simulationResult;
     final before = sim?['before_route'] as Map?;
     final after = sim?['after_route'] as Map?;
@@ -148,8 +146,12 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
     final centerLat = (startLat + destLat) / 2;
     final centerLng = (startLng + destLng) / 2;
 
+    final severityColor = CiroColors.forSeverity(widget.alert.severity?.value ?? 'medium');
+
     return Scaffold(
+      backgroundColor: colors.background,
       appBar: AppBar(
+        backgroundColor: colors.background,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => context.pop(),
@@ -160,14 +162,16 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
             Text(widget.alert.areaName ?? 'Crisis Detail', style: ts.title),
             Text(
               widget.alert.crisisType?.displayName ?? 'Emergency Alert',
-              style: ts.labelTiny.copyWith(color: colors.onSurface),
+              style: ts.caption.copyWith(
+                color: colors.onSurface.withAlpha(120),
+              ),
             ),
           ],
         ),
       ),
       body: Stack(
         children: [
-          // Detailed Map View
+          // ── Map ──────────────────────────────────────────────────────
           FlutterMap(
             options: MapOptions(
               initialCenter: LatLng(centerLat, centerLng),
@@ -181,35 +185,30 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
               if (!isLoadingRoutes) ...[
                 PolylineLayer(
                   polylines: [
-                    // Red direct blocked route
                     Polyline(
                       points: blockedRoute,
                       strokeWidth: 4.5,
-                      color: colors.error,
+                      color: CiroColors.severityCritical,
                     ),
-                    // Green alternate bypass route
                     Polyline(
                       points: alternateRoute,
                       strokeWidth: 4.5,
-                      color: colors.secondary,
+                      color: CiroColors.severityLow,
                     ),
                   ],
                 ),
                 MarkerLayer(
                   markers: [
-                    // Crisis Incident Pin
                     Marker(
                       point: LatLng(startLat, startLng),
                       width: 50,
                       height: 50,
                       child: Icon(
                         Icons.location_on_rounded,
-                        color: CiroColors.forSeverity(
-                            widget.alert.severity?.value ?? 'medium'),
+                        color: severityColor,
                         size: 44,
                       ),
                     ),
-                    // Response Destination Pin
                     Marker(
                       point: LatLng(destLat, destLng),
                       width: 50,
@@ -222,8 +221,8 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
                           border: Border.all(color: Colors.white, width: 2),
                           boxShadow: [
                             BoxShadow(
-                              color: colors.primary.withValues(alpha: 0.4),
-                              blurRadius: 8,
+                              color: colors.primary.withAlpha(100),
+                              blurRadius: 10,
                               spreadRadius: 2,
                             ),
                           ],
@@ -241,260 +240,274 @@ class _CrisisMapScreenState extends ConsumerState<CrisisMapScreen> {
             ],
           ),
 
-          // Loading Overlays
+          // ── Loading overlay ──────────────────────────────────────────
           if (isLoadingRoutes)
             Container(
-              color: colors.background.withValues(alpha: 0.6),
+              color: colors.background.withAlpha(150),
               child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.divider),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text('Calculating routes...', style: ts.body),
-                    ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                      decoration: BoxDecoration(
+                        color: colors.surface.withAlpha(220),
+                        borderRadius: BorderRadius.circular(CiroTheme.cardRadius),
+                        border: Border.all(color: CiroColors.glassBorder),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: colors.primary, strokeWidth: 2.5),
+                          const SizedBox(height: 16),
+                          Text('Calculating routes...', style: ts.body),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // Premium bottom sheet detail overlay
+          // ── Premium bottom detail sheet ───────────────────────────────
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
-              height: 280,
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border.all(color: colors.divider),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.surface.withAlpha(240),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border.all(color: CiroColors.glassBorder),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(80),
+                        blurRadius: 24,
+                        offset: const Offset(0, -6),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Bottom Sheet Drag Indicator
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.onSurface.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Header section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          _getTypeIconData(
-                              widget.alert.crisisType?.value ?? 'unknown'),
-                          color: colors.primary,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.alert.areaName ?? 'Islamabad',
-                                style: ts.titleMedium,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                'Destination: $destName',
-                                style: ts.bodySmall
-                                    .copyWith(color: colors.onSurface),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                        // ── Drag handle ─────────────────────────────────
+                        const SizedBox(height: 10),
+                        Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: colors.onSurface.withAlpha(60),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        SeverityBadge(
-                            severity: widget.alert.severity?.value ?? 'medium'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
+                        const SizedBox(height: 16),
 
-                  // Route times & stats
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Blocked route ETA
-                          Row(
+                        // ── Header ──────────────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Row(
                             children: [
                               Container(
-                                width: 8,
-                                height: 8,
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: colors.error,
-                                  shape: BoxShape.circle,
+                                  color: severityColor.withAlpha(15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  _getTypeIconData(
+                                      widget.alert.crisisType?.value ?? 'unknown'),
+                                  color: severityColor,
+                                  size: 24,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'BLOCKED ROUTE:',
-                                style: ts.bodySmall.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.alert.areaName ?? 'Islamabad',
+                                      style: ts.title.copyWith(fontSize: 18),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Dest: $destName',
+                                      style: ts.caption.copyWith(
+                                        color: colors.onSurface.withAlpha(120),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '$beforeEta mins — $beforeCongestion congestion',
-                                  style: ts.bodySmall
-                                      .copyWith(color: colors.error),
-                                ),
-                              ),
+                              SeverityBadge(
+                                  severity: widget.alert.severity?.value ?? 'medium'),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 16),
 
-                          const SizedBox(height: 12),
-
-                          // Alternate route ETA
-                          Row(
+                        // ── Route comparison ────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Row(
                             children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: colors.secondary,
-                                  shape: BoxShape.circle,
+                              Expanded(
+                                child: _RouteCard(
+                                  label: 'BLOCKED',
+                                  eta: beforeEta,
+                                  congestion: beforeCongestion,
+                                  color: CiroColors.severityCritical,
+                                  colors: colors,
+                                  ts: ts,
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Text(
-                                'ALTERNATE DETOUR:',
-                                style: ts.bodySmall.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
                               Expanded(
-                                child: Text(
-                                  '$afterEta mins — $afterCongestion congestion',
-                                  style: ts.bodySmall
-                                      .copyWith(color: colors.secondary),
+                                child: _RouteCard(
+                                  label: 'OPTIMIZED',
+                                  eta: afterEta,
+                                  congestion: afterCongestion,
+                                  color: CiroColors.severityLow,
+                                  colors: colors,
+                                  ts: ts,
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 12),
 
-                          const SizedBox(height: 16),
-
-                          // Savings Banner
-                          Container(
+                        // ── Savings banner ──────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 10,
-                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                             decoration: BoxDecoration(
-                              color: colors.secondary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: CiroColors.severityLow.withAlpha(12),
+                              borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+                              border: Border.all(
+                                color: CiroColors.severityLow.withAlpha(30),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.bolt_rounded,
-                                  color: colors.secondary,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
+                                Icon(Icons.bolt_rounded,
+                                    color: CiroColors.severityLow, size: 16),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'CIRO saved $saved minutes in responder dispatch time.',
+                                    'CIRO saved $saved mins in response time',
                                     style: ts.bodySmall.copyWith(
-                                      color: colors.secondary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
+                                      color: CiroColors.severityLow,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
+                        ),
+                        const SizedBox(height: 16),
 
-                  // Actions
-                  Padding(
-                    padding:
-                        const EdgeInsets.only(left: 20, right: 20, bottom: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        // ── Action button ───────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: GlowButton(
+                            label: 'View Full Trace',
+                            icon: Icons.timeline_rounded,
+                            onPressed: () {
+                              final traceResult = {
+                                'report_id': widget.alert.id,
+                                'crisis_type': widget.alert.crisisType?.value,
+                                'severity': widget.alert.severity?.value,
+                                'crisis_confidence': widget.alert.crisisConfidence,
+                                'detected_language': widget.alert.detectedLanguage,
+                                'normalized_location': widget.alert.areaName,
+                                'action_plan': widget.alert.agentTrace ?? [],
+                                'simulation_result':
+                                    widget.alert.simulationResult ?? {},
+                                'trace': widget.alert.agentTrace ?? [],
+                              };
+                              context.pushNamed('trace', extra: traceResult);
+                            },
+                            gradient: CiroColors.reportButtonGradient,
+                            glowColor: colors.primary,
                           ),
                         ),
-                        onPressed: () {
-                          // Build trace extra model to go back to detailed reasoning trace
-                          final traceResult = {
-                            'report_id': widget.alert.id,
-                            'crisis_type': widget.alert.crisisType?.value,
-                            'severity': widget.alert.severity?.value,
-                            'crisis_confidence': widget.alert.crisisConfidence,
-                            'detected_language': widget.alert.detectedLanguage,
-                            'normalized_location': widget.alert.areaName,
-                            'action_plan': widget.alert.agentTrace ?? [],
-                            'simulation_result':
-                                widget.alert.simulationResult ?? {},
-                            'trace': widget.alert.agentTrace ?? [],
-                          };
-                          context.pushNamed('trace', extra: traceResult);
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.timeline_rounded, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              'View Full Trace',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteCard extends StatelessWidget {
+  const _RouteCard({
+    required this.label,
+    required this.eta,
+    required this.congestion,
+    required this.color,
+    required this.colors,
+    required this.ts,
+  });
+
+  final String label;
+  final int eta;
+  final String congestion;
+  final Color color;
+  final CiroColorScheme colors;
+  final CiroTextStyleSet ts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withAlpha(8),
+        borderRadius: BorderRadius.circular(CiroTheme.chipRadius),
+        border: Border.all(color: color.withAlpha(25)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: ts.caption.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              fontSize: 10,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$eta min',
+            style: ts.display.copyWith(fontSize: 22, color: color),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            congestion,
+            style: ts.caption.copyWith(
+              color: color.withAlpha(180),
+              fontSize: 10,
             ),
           ),
         ],
