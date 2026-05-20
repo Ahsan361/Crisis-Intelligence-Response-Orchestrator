@@ -4,7 +4,7 @@ import datetime
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 from google.genai import types
-from agents.client_manager import get_client, rotate_client
+from agents.client_manager import get_client
 
 # Load environment variables
 load_dotenv()
@@ -78,17 +78,8 @@ def action_planner(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         result = call_gemini()
     except Exception as e:
-        if "429" in str(e):
-            print("Rate limit hit. Rotating API key...")
-            rotate_client()
-            try:
-                result = call_gemini()
-            except Exception as e2:
-                print(f"Retry also failed: {e2}")
-                result = fallback_output
-        else:
-            print(f"Error in ActionPlanner Gemini call: {e}")
-            result = fallback_output
+        print(f"Error in ActionPlanner Vertex AI call: {e}")
+        result = fallback_output
 
     # Update the shared state
     state["action_plan"] = result.get("action_plan", [])
@@ -103,21 +94,20 @@ def action_planner(state: Dict[str, Any]) -> Dict[str, Any]:
         "output_summary": f"Created {len(state['action_plan'])} response actions"
     }
     
-    if "trace" not in state:
-        state["trace"] = []
+    state.setdefault("trace", [])
     state["trace"].append(trace_entry)
 
     return state
 
-if __name__ == "__main__":
-    # Test script for ActionPlanner
-    test_state = {
-        "report_id": "test-uuid",
-        "severity": "critical",
-        "crisis_type": "flood",
-        "severity_explanation": "Massive flooding with people stranded on roofs.",
-        "trace": []
-    }
+# if __name__ == "__main__":
+#     # Test script for ActionPlanner
+#     test_state = {
+#         "report_id": "test-uuid",
+#         "severity": "critical",
+#         "crisis_type": "flood",
+#         "severity_explanation": "Massive flooding with people stranded on roofs.",
+#         "trace": []
+#     }
     
-    updated_state = action_planner(test_state)
-    print(json.dumps(updated_state, indent=2))
+#     updated_state = action_planner(test_state)
+#     print(json.dumps(updated_state, indent=2))

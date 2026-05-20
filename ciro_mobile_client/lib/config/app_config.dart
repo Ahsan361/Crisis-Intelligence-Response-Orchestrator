@@ -16,7 +16,7 @@ abstract final class AppConfig {
   static String get apiBaseUrl {
   if (kIsWeb) return 'http://localhost:8000';
   // Real device over USB/WiFi — replace with your computer's IPv4 from ipconfig
-  return 'http://192.168.1.2:8000';
+  return 'http://192.168.1.8:8000';
 }
 
   // ── Endpoints ───────────────────────────────────────────────────────────

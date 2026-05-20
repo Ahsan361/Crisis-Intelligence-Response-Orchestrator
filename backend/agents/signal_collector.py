@@ -4,7 +4,7 @@ import datetime
 from typing import Dict, Any
 from dotenv import load_dotenv
 from google.genai import types
-from agents.client_manager import get_client, rotate_client
+from agents.client_manager import get_client
 
 # Load environment variables
 load_dotenv()
@@ -68,17 +68,8 @@ def signal_collector(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         result = call_gemini()
     except Exception as e:
-        if "429" in str(e):
-            print("Rate limit hit. Rotating API key...")
-            rotate_client()
-            try:
-                result = call_gemini()
-            except Exception as e2:
-                print(f"Retry also failed: {e2}")
-                result = fallback_output
-        else:
-            print(f"Error in SignalCollector Gemini call: {e}")
-            result = fallback_output
+        print(f"Error in SignalCollector Vertex AI call: {e}")
+        result = fallback_output
 
     # Update the shared state
     state["cleaned_text"] = result.get("cleaned_text", report_text)
@@ -95,24 +86,23 @@ def signal_collector(state: Dict[str, Any]) -> Dict[str, Any]:
         "output_summary": f"Detected {state['detected_language']} language. Normalized location to {state['normalized_location']}"
     }
     
-    if "trace" not in state:
-        state["trace"] = []
+    state.setdefault("trace", [])
     state["trace"].append(trace_entry)
 
     return state
 
-if __name__ == "__main__":
-    # Test script for SignalCollector
-    test_state = {
-        "report_id": "test-uuid",
-        "raw_input": {
-            "report_text": "G-10 mein pani bhar gaya hai heavy rain ki wajah se",
-            "area_name": "G-10 Markaz",
-            "location_lat": 33.6938,
-            "location_lng": 73.0146
-        },
-        "trace": []
-    }
+# if __name__ == "__main__":
+#     # Test script for SignalCollector
+#     test_state = {
+#         "report_id": "test-uuid",
+#         "raw_input": {
+#             "report_text": "G-10 mein pani bhar gaya hai heavy rain ki wajah se",
+#             "area_name": "G-10 Markaz",
+#             "location_lat": 33.6938,
+#             "location_lng": 73.0146
+#         },
+#         "trace": []
+#     }
     
-    updated_state = signal_collector(test_state)
-    print(json.dumps(updated_state, indent=2))
+#     updated_state = signal_collector(test_state)
+#     print(json.dumps(updated_state, indent=2))

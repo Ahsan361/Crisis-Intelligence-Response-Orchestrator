@@ -5,7 +5,7 @@ import time
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 from google.genai import types
-from agents.client_manager import get_client, rotate_client
+from agents.client_manager import get_client
 
 # Import agents
 from agents.signal_collector import signal_collector
@@ -45,7 +45,7 @@ def narrate_decision(state: Dict[str, Any], next_agent: str) -> Dict[str, Any]:
     def call_gemini():
         client = get_client()
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
@@ -56,17 +56,8 @@ def narrate_decision(state: Dict[str, Any], next_agent: str) -> Dict[str, Any]:
     try:
         result = call_gemini()
     except Exception as e:
-        if "429" in str(e):
-            print("Rate limit hit. Rotating API key...")
-            rotate_client()
-            try:
-                result = call_gemini()
-            except Exception as e2:
-                print(f"Retry also failed: {e2}")
-                result = fallback_result
-        else:
-            print(f"Orchestrator narration error: {e}")
-            result = fallback_result
+        print(f"Error in Orchestrator narration: {e}")
+        result = fallback_result
 
     # Append Orchestrator trace entry
     trace_entry = {
@@ -76,8 +67,7 @@ def narrate_decision(state: Dict[str, Any], next_agent: str) -> Dict[str, Any]:
         "confidence": result.get("confidence", 100)
     }
     
-    if "trace" not in state:
-        state["trace"] = []
+    state.setdefault("trace", [])
     state["trace"].append(trace_entry)
     
     return state
@@ -146,20 +136,20 @@ def run_orchestrator(report_id: str, report_text: str, area_name: str, lat: floa
     print(f"--- CIRO Pipeline Complete ---")
     return state
 
-if __name__ == "__main__":
-    # Test full pipeline
-    final_state = run_orchestrator(
-        report_id="demo-uuid-123",
-        report_text="Help! G-10 markaz mein road block hai accident ki wajah se. Ambulances cannot pass.",
-        area_name="G-10 Islamabad",
-        lat=33.6938,
-        lng=73.0146
-    )
+# if __name__ == "__main__":
+#     # Test full pipeline
+#     final_state = run_orchestrator(
+#         report_id="demo-uuid-123",
+#         report_text="Help! G-10 markaz mein road block hai accident ki wajah se. Ambulances cannot pass.",
+#         area_name="G-10 Islamabad",
+#         lat=33.6938,
+#         lng=73.0146
+#     )
     
-    print("\nFINAL TRACE LOG:")
-    for entry in final_state["trace"]:
-        print(f"[{entry['agent']}] {entry.get('decision', entry.get('output_summary', 'No summary'))}")
+#     print("\nFINAL TRACE LOG:")
+#     for entry in final_state["trace"]:
+#         print(f"[{entry['agent']}] {entry.get('decision', entry.get('output_summary', 'No summary'))}")
     
-    # Optional: Save to file for inspection
-    with open("pipeline_result.json", "w") as f:
-        json.dump(final_state, f, indent=2)
+#     # Optional: Save to file for inspection
+#     with open("pipeline_result.json", "w") as f:
+#         json.dump(final_state, f, indent=2)
