@@ -40,6 +40,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   final _reportTextController = TextEditingController();
   final _areaNameController = TextEditingController();
   final _reportedByController = TextEditingController();
+  final _areaFocusNode = FocusNode();
+  final _mapController = MapController();
   ReportSource _selectedSource = ReportSource.manual;
 
   // Location State
@@ -51,14 +53,21 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   ReportScreenState _state = ReportScreenState.idle;
   int _activeStepIndex = -1;
   Timer? _visualTimer;
+  Timer? _areaSearchDebounce;
+  List<_AreaSuggestion> _areaSuggestions = [];
   bool _isFetchingAddress = false;
+  bool _isSearchingAreas = false;
+  bool _showAreaSuggestions = false;
+  String _activeAreaQuery = '';
 
   @override
   void dispose() {
     _reportTextController.dispose();
     _areaNameController.dispose();
     _reportedByController.dispose();
+    _areaFocusNode.dispose();
     _visualTimer?.cancel();
+    _areaSearchDebounce?.cancel();
     super.dispose();
   }
 
@@ -142,24 +151,17 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           'addressdetails': 1,
         },
         options: Options(
-          headers: {'User-Agent': 'CIRO-Mobile-App'},
+          headers: {
+            'User-Agent': 'CIRO-Mobile-App',
+            'Accept-Language': 'en',
+          },
         ),
       );
 
       if (response.data != null) {
-        final addr = response.data['address'] ?? {};
-        String? name = addr['neighbourhood'] ??
-            addr['suburb'] ??
-            addr['city_district'] ??
-            addr['village'] ??
-            addr['town'];
-
-        if (name == null) {
-          final displayName = response.data['display_name'] as String?;
-          if (displayName != null) {
-            name = displayName.split(',').first;
-          }
-        }
+        final addr = Map<String, dynamic>.from(response.data['address'] ?? {});
+        final name =
+            _formatAreaLabel(addr, response.data['display_name'] as String?);
 
         if (name != null && mounted) {
           _areaNameController.text = name;
@@ -170,6 +172,176 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     } finally {
       if (mounted) setState(() => _isFetchingAddress = false);
     }
+  }
+
+  void _onAreaQueryChanged(String query) {
+    _areaSearchDebounce?.cancel();
+
+    if (query.trim().length < 3) {
+      if (mounted) {
+        setState(() {
+          _activeAreaQuery = query;
+          _areaSuggestions = [];
+          _showAreaSuggestions = false;
+          _isSearchingAreas = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _activeAreaQuery = query;
+        _isSearchingAreas = true;
+        _showAreaSuggestions = true;
+      });
+    }
+
+    _areaSearchDebounce = Timer(const Duration(milliseconds: 300), () {
+      _searchAreaSuggestions(query);
+    });
+  }
+
+  Future<void> _searchAreaSuggestions(String query) async {
+    final searchQuery = query.trim();
+    if (searchQuery.length < 3) return;
+
+    try {
+      final dio = ref.read(apiServiceProvider).client;
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'format': 'jsonv2',
+          'q': searchQuery,
+          'addressdetails': 1,
+          'limit': 5,
+          'dedupe': 1,
+          'countrycodes': 'pk',
+          'namedetails': 1,
+          'accept-language': 'en',
+        },
+        options: Options(
+          headers: {
+            'User-Agent': 'CIRO-Mobile-App',
+            'Accept-Language': 'en',
+          },
+        ),
+      );
+
+      if (!mounted || _activeAreaQuery.trim() != searchQuery) return;
+
+      final data = response.data;
+      final items = <_AreaSuggestion>[];
+      if (data is List) {
+        for (final entry in data) {
+          if (entry is Map<String, dynamic>) {
+            final address = Map<String, dynamic>.from(entry['address'] ?? {});
+            final displayName = _formatAreaLabel(
+              address,
+              entry['display_name'] as String?,
+            );
+            final lat = double.tryParse(entry['lat']?.toString() ?? '');
+            final lng = double.tryParse(entry['lon']?.toString() ?? '');
+            if (displayName != null && lat != null && lng != null) {
+              items.add(
+                _AreaSuggestion(
+                  label: displayName,
+                  lat: lat,
+                  lng: lng,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      if (mounted && _activeAreaQuery.trim() == searchQuery) {
+        setState(() {
+          _areaSuggestions = items;
+          _showAreaSuggestions = true;
+          _isSearchingAreas = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Area search failed: $e');
+      if (mounted && _activeAreaQuery.trim() == searchQuery) {
+        setState(() {
+          _areaSuggestions = [];
+          _isSearchingAreas = false;
+        });
+      }
+    }
+  }
+
+  void _selectAreaSuggestion(_AreaSuggestion suggestion) {
+    setState(() {
+      _areaNameController.text = suggestion.label;
+      _areaNameController.selection = TextSelection.collapsed(
+        offset: _areaNameController.text.length,
+      );
+      _locationLat = suggestion.lat;
+      _locationLng = suggestion.lng;
+      _locationSet = true;
+      _areaSuggestions = [];
+      _showAreaSuggestions = false;
+      _isSearchingAreas = false;
+      _activeAreaQuery = suggestion.label;
+    });
+    _moveMapToSelection(suggestion.lat, suggestion.lng);
+    FocusScope.of(context).unfocus();
+  }
+
+  void _moveMapToSelection(double lat, double lng) {
+    _mapController.move(LatLng(lat, lng), 15);
+  }
+
+  String? _formatAreaLabel(
+    Map<String, dynamic> address,
+    String? fallbackDisplayName,
+  ) {
+    final parts = <String?>[
+      address['neighbourhood'] as String?,
+      address['suburb'] as String?,
+      address['city_district'] as String?,
+      address['village'] as String?,
+      address['town'] as String?,
+      address['city'] as String?,
+      address['county'] as String?,
+    ]
+        .where((part) => part != null && part.trim().isNotEmpty)
+        .cast<String>()
+        .toList();
+
+    final city = address['city'] as String? ??
+        address['town'] as String? ??
+        address['village'] as String?;
+    final state = address['state'] as String?;
+
+    final primary = parts.isNotEmpty ? parts.first : null;
+    final secondaryParts = <String>[
+      if (parts.length > 1) parts[1],
+      if (city != null && city != primary) city,
+      if (state != null && state != city) state,
+      if ((address['country'] as String?) == 'Pakistan') 'Pakistan',
+    ];
+
+    final secondary =
+        secondaryParts.where((part) => part.trim().isNotEmpty).join(', ');
+
+    if (primary != null && secondary.isNotEmpty) {
+      return '$primary · $secondary';
+    }
+
+    if (primary != null) {
+      return primary;
+    }
+
+    if (fallbackDisplayName != null && fallbackDisplayName.trim().isNotEmpty) {
+      final firstLine = fallbackDisplayName.split(',').first.trim();
+      return firstLine.isNotEmpty ? firstLine : fallbackDisplayName.trim();
+    }
+
+    return null;
   }
 
   void _onPipelineBackendResponse(Map<String, dynamic>? result) {
@@ -287,28 +459,117 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 border: Border.all(color: CiroColors.glassBorder),
                 gradient: CiroColors.cardGradient,
               ),
-              child: TextFormField(
-                controller: _areaNameController,
-                style: ts.body,
-                decoration: _inputDecoration(
-                  'e.g. G-10 Markaz, Blue Area, F-7',
-                  colors,
-                ).copyWith(
-                  suffixIcon: _isFetchingAddress
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : null,
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Area name is required';
-                  return null;
-                },
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _areaNameController,
+                    focusNode: _areaFocusNode,
+                    style: ts.body,
+                    decoration: _inputDecoration(
+                      'Search area, colony, markaz, or street',
+                      colors,
+                    ).copyWith(
+                      suffixIcon: _isFetchingAddress || _isSearchingAreas
+                          ? const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : _areaNameController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded),
+                                  onPressed: () {
+                                    setState(() {
+                                      _areaNameController.clear();
+                                      _areaSuggestions = [];
+                                      _showAreaSuggestions = false;
+                                      _isSearchingAreas = false;
+                                      _locationSet = false;
+                                    });
+                                  },
+                                )
+                              : null,
+                    ),
+                    onChanged: _onAreaQueryChanged,
+                    onTap: () {
+                      if (_areaSuggestions.isNotEmpty) {
+                        setState(() => _showAreaSuggestions = true);
+                      }
+                    },
+                    onTapOutside: (_) {
+                      Future.delayed(const Duration(milliseconds: 120), () {
+                        if (mounted) {
+                          setState(() => _showAreaSuggestions = false);
+                        }
+                      });
+                    },
+                    validator: (v) {
+                      if (v == null || v.isEmpty)
+                        return 'Area name is required';
+                      return null;
+                    },
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: _showAreaSuggestions && _areaSuggestions.isNotEmpty
+                        ? Container(
+                            constraints: const BoxConstraints(maxHeight: 240),
+                            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            decoration: BoxDecoration(
+                              color: colors.surface,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? CiroColors.glassBorder
+                                    : colors.onSurface.withAlpha(24),
+                              ),
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              itemCount: _areaSuggestions.length,
+                              separatorBuilder: (_, __) => Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: colors.onSurface.withAlpha(12),
+                              ),
+                              itemBuilder: (context, index) {
+                                final suggestion = _areaSuggestions[index];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(
+                                    suggestion.label,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: ts.bodySmall.copyWith(
+                                      color: colors.onBackground,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Tap to use this location',
+                                    style: ts.caption.copyWith(
+                                      color: colors.onSurface.withAlpha(150),
+                                    ),
+                                  ),
+                                  leading: Icon(
+                                    Icons.place_rounded,
+                                    color: colors.primary,
+                                  ),
+                                  onTap: () =>
+                                      _selectAreaSuggestion(suggestion),
+                                );
+                              },
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
@@ -324,6 +585,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               ),
               clipBehavior: Clip.antiAlias,
               child: FlutterMap(
+                mapController: _mapController,
                 options: MapOptions(
                   initialCenter: const LatLng(33.6844, 73.0479),
                   initialZoom: 13,
@@ -487,6 +749,18 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
     );
   }
+}
+
+class _AreaSuggestion {
+  const _AreaSuggestion({
+    required this.label,
+    required this.lat,
+    required this.lng,
+  });
+
+  final String label;
+  final double lat;
+  final double lng;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

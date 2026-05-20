@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../router/app_router.dart';
 import '../theme/app_text_styles.dart';
@@ -63,7 +64,7 @@ class SplashScreen extends ConsumerWidget {
             child: Column(
               children: [
                 const Spacer(flex: 3),
-                const _ShieldLogo(),
+                const _CiroLogo(),
                 const SizedBox(height: 32),
                 const _CiroWordmark(),
                 const SizedBox(height: 12),
@@ -122,17 +123,23 @@ class _DarkOverlay extends StatelessWidget {
   }
 }
 
-class _ShieldLogo extends StatelessWidget {
-  const _ShieldLogo();
+class _CiroLogo extends StatelessWidget {
+  const _CiroLogo();
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/ciro_shield.png',
-      width: 110,
-      height: 110,
-      fit: BoxFit.contain,
-      semanticLabel: 'CIRO shield logo',
+    return SizedBox(
+      width: 124,
+      height: 124,
+      child: Center(
+        child: SvgPicture.asset(
+          'assets/images/ciro_logo.svg',
+          width: 114,
+          height: 114,
+          fit: BoxFit.contain,
+          semanticsLabel: 'CIRO logo',
+        ),
+      ),
     )
         .animate()
         .fadeIn(duration: 700.ms, curve: Curves.easeOut)
@@ -218,9 +225,7 @@ class _LoadingBar extends StatelessWidget {
           ),
         ),
       ),
-    )
-        .animate()
-        .fadeIn(delay: 1000.ms, duration: 400.ms);
+    ).animate().fadeIn(delay: 1000.ms, duration: 400.ms);
   }
 }
 
@@ -233,8 +238,6 @@ class _PoweredByFooter extends StatelessWidget {
       'Powered by Google Antigravity',
       style: CiroTextStyles.splashFooter,
       textAlign: TextAlign.center,
-    )
-        .animate()
-        .fadeIn(delay: 1100.ms, duration: 600.ms, curve: Curves.easeIn);
+    ).animate().fadeIn(delay: 1100.ms, duration: 600.ms, curve: Curves.easeIn);
   }
 }

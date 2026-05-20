@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # SVG rendering for logo artwork
+  flutter_svg: ^2.0.17
+
   # Typography
   google_fonts: ^8.1.0
 
@@ -44,7 +47,8 @@ flutter:
   assets:
     # Background and branding
     - assets/images/splash_bg.png
-    - assets/images/ciro_shield.png
+    - assets/images/ciro_logo.png
+    - assets/images/ciro_logo.svg
 
     # Crisis type icons
     - assets/icons/flood.png
@@ -56,4 +60,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/ciro_logo.png"
+  image_path: "assets/images/app_icon.png"
+  remove_alpha_ios: true

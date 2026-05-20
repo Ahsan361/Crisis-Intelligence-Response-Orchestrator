@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/crisis_alert.dart';
 import '../providers/app_providers.dart';
@@ -86,16 +87,20 @@ class _CiroAppBar extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: colors.background,
       elevation: 0,
       leading: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: Image.asset(
-          'assets/images/ciro_shield.png',
-          width: 28,
-          height: 28,
-          fit: BoxFit.contain,
-          semanticLabel: 'CIRO shield',
+        padding: EdgeInsets.zero,
+        child: Center(
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: SvgPicture.asset(
+              'assets/images/ciro_logo.svg',
+              fit: BoxFit.contain,
+              semanticsLabel: 'CIRO logo',
+            ),
+          ),
         ),
       ),
-      leadingWidth: 52,
+      leadingWidth: 56,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
