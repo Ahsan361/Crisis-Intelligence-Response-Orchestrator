@@ -356,8 +356,9 @@ async def delete_report(report_id: str):
 
 @app.post("/analyze-report")
 async def analyze_report(req: AnalyzeRequest):
-    # 1. Call run_orchestrator with the provided values
-    state = run_orchestrator(
+    # 1. Call run_orchestrator with the provided values in a background thread
+    state = await asyncio.to_thread(
+        run_orchestrator,
         report_id=req.report_id,
         report_text=req.report_text,
         area_name=req.area_name,

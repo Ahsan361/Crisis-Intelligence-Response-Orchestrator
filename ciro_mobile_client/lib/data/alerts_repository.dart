@@ -26,6 +26,11 @@ class AlertsRepository {
     return await _service.createReport(alert);
   }
 
+  /// Fetches a single report's data (including trace details).
+  Future<Map<String, dynamic>> getAlert(String id) async {
+    return await _service.getReport(id);
+  }
+
   /// Triggers the full agent pipeline for a specific report.
   ///
   /// Requires full report context to provide to the backend agents.

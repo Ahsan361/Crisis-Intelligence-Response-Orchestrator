@@ -10,12 +10,13 @@ export function useReports(options = {}) {
   })
 }
 
-export function useReport(id) {
+export function useReport(id, options = {}) {
   return useQuery({
     queryKey: ["report", id],
     queryFn: () => fetchReport(id),
     enabled: Boolean(id),
     retry: 1,
+    ...options
   })
 }
 

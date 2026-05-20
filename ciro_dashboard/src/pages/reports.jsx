@@ -3,15 +3,17 @@ import { ArrowDownUp, Eye, Search, Trash2, Zap } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AnalysisProgressDialog } from "@/components/ui/analysis-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input, Select } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ErrorState, LoadingState } from "@/components/shared/state-blocks"
 import { SeverityBadge } from "@/components/shared/severity-badge"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { useAnalyzeReport, useDeleteReport, useReports, useResolveReport } from "@/hooks/useReports"
+import { useAnalyzeReport, useDeleteReport, useReports, useResolveReport, useReport } from "@/hooks/useReports"
 import { formatDateTime, hasTrace, titleCase, truncateId } from "@/lib/format"
 import { severityMeta } from "@/lib/constants"
+import { useAnalysisState } from "@/lib/analysisContext"
 import { cn } from "@/lib/utils"
 
 const pageSize = 20
@@ -23,12 +25,20 @@ export function ReportsPage() {
   const analyze = useAnalyzeReport()
   const resolveReport = useResolveReport()
   const deleteReport = useDeleteReport()
+  const { setAnalyzing, clearAnalyzing } = useAnalysisState()
+  const [analyzingReport, setAnalyzingReport] = useState(null)
   const [filters, setFilters] = useState({ search: "", status: "", crisis_type: "", source: "", severity: "", from: "", to: "" })
   const [sort, setSort] = useState({ key: "created_at", direction: "desc" })
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState([])
   const [deleteTarget, setDeleteTarget] = useState(null)
   const reports = reportsQuery.data ?? emptyReports
+
+  // Real-time trace polling for report under analysis
+  const { data: polledReport } = useReport(analyzingReport?.id, {
+    refetchInterval: 1000,
+    enabled: Boolean(analyzingReport?.id),
+  })
 
   const filtered = useMemo(() => {
     const search = filters.search.toLowerCase()
@@ -63,7 +73,18 @@ export function ReportsPage() {
   async function analyzeSelected() {
     if (pendingSelected.length > 3 && !window.confirm(`This will make ${pendingSelected.length} API calls. Continue?`)) return
     for (const report of pendingSelected) {
-      await analyze.mutateAsync(report)
+      setAnalyzingReport(report)
+      setAnalyzing(report)
+      try {
+        await analyze.mutateAsync(report)
+        // Wait 1.2 seconds for the success animation to display
+        await new Promise((resolve) => setTimeout(resolve, 1200))
+      } catch (err) {
+        console.error("Analysis failed:", err)
+      } finally {
+        setAnalyzingReport(null)
+        clearAnalyzing()
+      }
     }
     setSelected([])
   }
@@ -144,7 +165,28 @@ export function ReportsPage() {
                     <TableCell>{formatDateTime(report.created_at)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {report.status === "pending" ? <Button size="sm" onClick={() => analyze.mutate(report)} disabled={analyze.isPending}>Analyze</Button> : null}
+                        {report.status === "pending" ? (
+                          <Button
+                            size="sm"
+                            disabled={analyze.isPending}
+                            onClick={async () => {
+                              setAnalyzingReport(report)
+                              setAnalyzing(report)
+                              try {
+                                await analyze.mutateAsync(report)
+                                // Wait 1.2 seconds for the success animation to display
+                                await new Promise((resolve) => setTimeout(resolve, 1200))
+                              } catch (err) {
+                                console.error("Analysis failed:", err)
+                              } finally {
+                                setAnalyzingReport(null)
+                                clearAnalyzing()
+                              }
+                            }}
+                          >
+                            Analyze
+                          </Button>
+                        ) : null}
                         {hasTrace(report) ? <Button size="icon" variant="outline" onClick={() => navigate(`/trace/${report.id}`)}><Eye className="h-4 w-4" /></Button> : null}
                         {report.status === "simulated" ? <Button size="sm" variant="secondary" onClick={() => resolveReport.mutate(report)}>Resolve</Button> : null}
                         <Button size="icon" variant="destructive" onClick={() => setDeleteTarget(report)}><Trash2 className="h-4 w-4" /></Button>
@@ -172,6 +214,11 @@ export function ReportsPage() {
         loading={deleteReport.isPending}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => deleteReport.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
+      />
+      <AnalysisProgressDialog
+        open={Boolean(analyzingReport)}
+        reportName={analyzingReport?.area_name || null}
+        trace={polledReport?.agent_trace || null}
       />
     </div>
   )

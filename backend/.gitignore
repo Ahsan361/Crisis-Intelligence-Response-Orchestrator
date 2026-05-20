@@ -97,12 +97,23 @@ celerybeat.pid
 
 # Environments
 .env
+_env
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 
 # Spyder project settings
 .spyderproject

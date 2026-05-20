@@ -102,7 +102,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         _activeStepIndex = 0;
       });
 
-      _startVisualProgression();
+      _startVisualProgression(createdReport.id);
 
       await ref.read(analyzeAlertProvider.notifier).analyze(
             reportId: createdReport.id,
@@ -127,12 +127,35 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     }
   }
 
-  void _startVisualProgression() {
-    _visualTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
-      if (_activeStepIndex < 3) {
-        setState(() => _activeStepIndex++);
-      } else {
-        timer.cancel();
+  void _startVisualProgression(String reportId) {
+    _visualTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      try {
+        final repo = ref.read(alertsRepositoryProvider);
+        final reportMap = await repo.getAlert(reportId);
+        final trace = reportMap['agent_trace'] as List?;
+        if (trace != null && trace.isNotEmpty && mounted) {
+          bool hasAgent(String name) => trace.any((t) => t['agent'] == name);
+          int newIndex = 0;
+          if (hasAgent('Simulator')) {
+            newIndex = 4; // Step 4 (Simulator) is complete, meaning we are finalized/done
+          } else if (hasAgent('ActionPlanner')) {
+            newIndex = 4; // ActionPlanner finished, Simulator is active
+          } else if (hasAgent('ReasoningAnalyzer')) {
+            newIndex = 3; // ReasoningAnalyzer finished, ActionPlanner is active
+          } else if (hasAgent('CrisisDetector')) {
+            newIndex = 2; // CrisisDetector finished, ReasoningAnalyzer is active
+          } else if (hasAgent('SignalCollector')) {
+            newIndex = 1; // SignalCollector finished, CrisisDetector is active
+          }
+          
+          if (newIndex > _activeStepIndex && newIndex < 5) {
+            setState(() {
+              _activeStepIndex = newIndex;
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error polling alert trace in mobile client: $e');
       }
     });
   }

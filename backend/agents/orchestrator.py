@@ -72,6 +72,30 @@ def narrate_decision(state: Dict[str, Any], next_agent: str) -> Dict[str, Any]:
     
     return state
 
+def save_pipeline_progress(report_id: str, state: Dict[str, Any], status: str = "analyzing"):
+    try:
+        from database import supabase
+        
+        valid_crisis_types = ["flood", "accident", "heatwave", "blockage", "infrastructure"]
+        valid_severities = ["low", "medium", "high", "critical"]
+
+        crisis_type = state.get("crisis_type", "")
+        severity = state.get("severity", "")    
+        
+        update_data = {
+            "status": status,
+            "agent_trace": state.get("trace", []),
+            "simulation_result": state.get("simulation_result", {}),
+            "crisis_type": crisis_type if crisis_type in valid_crisis_types else None,
+            "severity": severity if severity in valid_severities else None,
+            "crisis_confidence": state.get("crisis_confidence", 0),
+            "detected_language": state.get("detected_language", "Unknown"),
+            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        supabase.table("reports").update(update_data).eq("id", report_id).execute()
+    except Exception as e:
+        print(f"Error saving pipeline progress: {e}")
+
 def run_orchestrator(report_id: str, report_text: str, area_name: str, lat: float, lng: float) -> Dict[str, Any]:
     """
     Main entry point for the CIRO Agent Pipeline.
@@ -109,29 +133,39 @@ def run_orchestrator(report_id: str, report_text: str, area_name: str, lat: floa
 
     # Step 0: Orchestrator Initial Narration
     state = narrate_decision(state, "SignalCollector")
+    save_pipeline_progress(report_id, state)
     
     # Step 1: Signal Collector
     state = signal_collector(state)
+    save_pipeline_progress(report_id, state)
     time.sleep(15)
     
     # Step 2: Transition to Crisis Detector
     state = narrate_decision(state, "CrisisDetector")
+    save_pipeline_progress(report_id, state)
     state = crisis_detector(state)
+    save_pipeline_progress(report_id, state)
     time.sleep(15)
     
     # Step 3: Transition to Reasoning Analyzer
     state = narrate_decision(state, "ReasoningAnalyzer")
+    save_pipeline_progress(report_id, state)
     state = reasoning_analyzer(state)
+    save_pipeline_progress(report_id, state)
     time.sleep(15)
     
     # Step 4: Transition to Action Planner
     state = narrate_decision(state, "ActionPlanner")
+    save_pipeline_progress(report_id, state)
     state = action_planner(state)
+    save_pipeline_progress(report_id, state)
     time.sleep(15)
     
     # Step 5: Transition to Simulator
     state = narrate_decision(state, "Simulator")
+    save_pipeline_progress(report_id, state)
     state = simulator(state)
+    save_pipeline_progress(report_id, state, "simulated")
 
     print(f"--- CIRO Pipeline Complete ---")
     return state

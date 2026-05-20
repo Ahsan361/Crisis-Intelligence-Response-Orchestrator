@@ -40,6 +40,17 @@ class ReportsService {
     throw Exception('Failed to create report: ${response.statusMessage}');
   }
 
+  /// Fetches a single report by ID.
+  /// 
+  /// Endpoint: GET /reports/{id}
+  Future<Map<String, dynamic>> getReport(String id) async {
+    final response = await _api.get('${AppConfig.reports}/$id');
+    if (response.statusCode == 200) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch report: ${response.statusMessage}');
+  }
+
   /// Triggers the agent analysis pipeline for a specific report.
   /// 
   /// Endpoint: POST /analyze-report/{id}

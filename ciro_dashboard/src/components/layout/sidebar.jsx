@@ -20,13 +20,13 @@ export function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r bg-surface">
-      <div className="flex h-16 items-center gap-3 border-b px-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-card border border-primary/40 bg-primary/10 text-primary">
-          <Shield className="h-5 w-5" />
+      <div className="flex flex-col items-center gap-2 border-b px-4 py-6">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-700 shadow-lg ring-2 ring-teal-400/30">
+          <Shield className="h-10 w-10 text-white" />
         </div>
-        <div>
-          <p className="text-lg font-bold leading-none text-foreground">CIRO</p>
-          <p className="mt-1 text-xs text-muted">Admin Command</p>
+        <div className="pt-2 text-center">
+          <p className="text-base font-bold leading-none text-foreground">CIRO</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-muted">Admin Command</p>
         </div>
       </div>
 

@@ -39,11 +39,11 @@ export function TraceViewerPage() {
   const report = reportQuery.data
   const simulation = report?.simulation_result ?? {}
   const trace = traceEntries(report)
-  const before = simulationValue(simulation, ["eta_before_minutes", "before_eta_minutes", "eta_before"])
-  const after = simulationValue(simulation, ["eta_after_minutes", "after_eta_minutes", "eta_after"])
+  const before = numericValue(simulation?.before_route?.eta_minutes) ?? simulationValue(simulation, ["eta_before_minutes", "before_eta_minutes", "eta_before"])
+  const after = numericValue(simulation?.after_route?.eta_minutes) ?? simulationValue(simulation, ["eta_after_minutes", "after_eta_minutes", "eta_after"])
   const actions = simulation.action_plan || simulation.actions || []
   const alerts = simulation.alerts_dispatched || simulation.alerts || []
-  const ticketId = simulation.emergency_ticket_id || simulation.ticket_id || simulation.ticket?.id || "Unavailable"
+  const ticketId = simulation?.emergency_ticket?.ticket_id || simulation.emergency_ticket_id || simulation.ticket_id || simulation.ticket?.id || "Unavailable"
 
   function exportJson() {
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" })
@@ -95,25 +95,26 @@ export function TraceViewerPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Response Actions</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Priority</TableHead><TableHead>Assigned To</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {actions.map((action, index) => (
-                <TableRow key={`${action.type}-${index}`}>
-                  <TableCell>{titleCase(action.type)}</TableCell>
-                  <TableCell>{action.description || "No action description provided"}</TableCell>
-                  <TableCell><SeverityBadge severity={String(action.priority || "unknown").toLowerCase()} /></TableCell>
-                  <TableCell>{action.assigned_to || action.assignedTo || "Command center"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {!actions.length ? <p className="p-4 text-sm text-muted">No action plan has been recorded for this trace.</p> : null}
-        </CardContent>
-      </Card>
+      {actions.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Response Actions</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Priority</TableHead><TableHead>Assigned To</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {actions.map((action, index) => (
+                  <TableRow key={`${action.type}-${index}`}>
+                    <TableCell>{titleCase(action.type)}</TableCell>
+                    <TableCell>{action.description || "No action description provided"}</TableCell>
+                    <TableCell><SeverityBadge severity={String(action.priority || "unknown").toLowerCase()} /></TableCell>
+                    <TableCell>{action.assigned_to || action.assignedTo || "Command center"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-[1fr_2fr] gap-4">
         <Card>
@@ -147,8 +148,12 @@ export function TraceViewerPage() {
                   </div>
                   <p className="mt-1 text-xs font-semibold">Confidence {percent(entry.confidence)}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground">{entry.decision || entry.decision_text || "No decision text recorded."}</p>
-                  <p className="mt-2 text-xs text-muted">Input: {entry.input_summary || JSON.stringify(entry.input ?? "Unavailable")}</p>
-                  <p className="mt-1 text-xs text-muted">Output: {entry.output_summary || JSON.stringify(entry.output ?? "Unavailable")}</p>
+                  {entry.input_summary && (
+                    <p className="mt-2 text-xs text-muted">Input: {entry.input_summary}</p>
+                  )}
+                  {entry.output_summary && (
+                    <p className="mt-1 text-xs text-muted">Output: {entry.output_summary}</p>
+                  )}
                 </div>
               )
             }) : <p className="text-sm text-muted">No agent trace entries are attached to this report.</p>}

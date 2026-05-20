@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/shared/state-blocks"
 
-export function ChartCard({ title, description, empty, children }) {
+export function ChartCard({ title, description, empty, className = "h-72", children }) {
   return (
     <Card>
       <CardHeader>
@@ -12,7 +12,7 @@ export function ChartCard({ title, description, empty, children }) {
         {empty ? (
           <EmptyState title="No chart data" description="CIRO will populate this view as reports arrive from Islamabad sources." />
         ) : (
-          <div className="h-72">{children}</div>
+          <div className={className}>{children}</div>
         )}
       </CardContent>
     </Card>

@@ -27,7 +27,36 @@ export function countBy(reports, key, fallback = "unknown") {
     const value = report[key] || fallback
     counts.set(value, (counts.get(value) ?? 0) + 1)
   })
-  return Array.from(counts, ([name, value], index) => ({ name, value, fill: crisisTypeColors[index % crisisTypeColors.length] }))
+
+  const crisisColorsMap = {
+    flood: "#2F81F7",           // Blue
+    flooding: "#2F81F7",        // Blue
+    accident: "#A371F7",        // Purple
+    heatwave: "#E3B341",        // Yellow/Amber
+    blockage: "#F78166",        // Orange (distinct from fire/red)
+    fire: "#F85149",            // Red
+    wildfire: "#F85149",        // Red
+    infrastructure: "#3FB950",  // Green
+    unknown: "#8B949E",         // Gray
+  }
+
+  const sourceColorsMap = {
+    social_media: "#39C5CF",    // Cyan/Teal
+    twitter: "#39C5CF",         // Cyan/Teal
+    manual: "#8B949E",          // Gray
+    email: "#2F81F7",           // Blue
+    phone: "#A371F7",           // Purple
+    telephony: "#A371F7",       // Purple
+    api: "#3FB950",             // Green
+  }
+
+  const colorMap = key === "source" ? sourceColorsMap : crisisColorsMap
+
+  return Array.from(counts, ([name, value], index) => {
+    const normalized = (name || "").toLowerCase().trim()
+    const fill = colorMap[normalized] || crisisTypeColors[index % crisisTypeColors.length]
+    return { name, value, fill }
+  })
 }
 
 export function severityBreakdown(reports) {
@@ -72,7 +101,11 @@ export function areaHeatmap(reports) {
   return Array.from(rows.values()).sort((a, b) => b.count - a.count)
 }
 
-function getSimulationMetric(simulation, candidates) {
+function getSimulationMetric(simulation, candidates, routeKey) {
+  if (routeKey && simulation?.[routeKey]) {
+    const value = numericValue(simulation[routeKey]?.eta_minutes)
+    if (value !== null) return value
+  }
   for (const key of candidates) {
     const value = numericValue(simulation?.[key])
     if (value !== null) return value
@@ -84,8 +117,8 @@ export function responseTimeByType(reports) {
   const groups = new Map()
   reports.forEach((report) => {
     const simulation = report.simulation_result
-    const before = getSimulationMetric(simulation, ["eta_before_minutes", "before_eta_minutes", "eta_before"])
-    const after = getSimulationMetric(simulation, ["eta_after_minutes", "after_eta_minutes", "eta_after"])
+    const before = getSimulationMetric(simulation, ["eta_before_minutes", "before_eta_minutes", "eta_before"], "before_route")
+    const after = getSimulationMetric(simulation, ["eta_after_minutes", "after_eta_minutes", "eta_after"], "after_route")
     if (before === null || after === null) return
     const type = report.crisis_type || "unknown"
     const current = groups.get(type) ?? { crisisType: type, beforeTotal: 0, afterTotal: 0, count: 0 }
