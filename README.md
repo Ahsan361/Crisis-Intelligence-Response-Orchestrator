@@ -13,14 +13,6 @@
 
 🔗 **[View Demo Video on Google Drive](https://drive.google.com/file/d/1BX2srDHEKHPRC0_MoxvoN5dTZbIKNAzG/view?usp=drive_link)**
 
-#### 📹 Embedded Demo Player:
-<iframe 
-  src="https://drive.google.com/file/d/1BX2srDHEKHPRC0_MoxvoN5dTZbIKNAzG/preview" 
-  width="100%" 
-  height="480" 
-  allow="autoplay">
-</iframe>
-
 > **Note**: The video above shows the complete CIRO mobile client in action, including real-time crisis reporting, agent pipeline visualization, and emergency response simulation.
 
 ---
