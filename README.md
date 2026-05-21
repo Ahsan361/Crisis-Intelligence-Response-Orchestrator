@@ -11,12 +11,11 @@
 
 ### **Watch the full mobile application demonstration:**
 
-🔗 **[View Demo Video on Google Drive](https://drive.google.com/YOUR_DRIVE_LINK_HERE)**
+🔗 **[View Demo Video on Google Drive](https://drive.google.com/file/d/1BX2srDHEKHPRC0_MoxvoN5dTZbIKNAzG/view?usp=drive_link)**
 
 #### 📹 Embedded Demo Player:
-<!-- Replace the Google Drive link ID in the src below with your actual video ID -->
 <iframe 
-  src="https://drive.google.com/file/d/YOUR_DRIVE_FILE_ID/preview" 
+  src="https://drive.google.com/file/d/1BX2srDHEKHPRC0_MoxvoN5dTZbIKNAzG/preview" 
   width="100%" 
   height="480" 
   allow="autoplay">
